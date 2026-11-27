@@ -215,6 +215,9 @@ for (const leaf of leaves) {
       status: "PUBLISHED",
       organic: rand() < 0.6,
       glutenFree: leaf.slug === "whole-flour" || leaf.slug === "rice" ? true : rand() < 0.2,
+      // Locally produced: deterministic from the product number so the
+      // rand() stream (and therefore every other value) stays unchanged.
+      local: n % 3 !== 0,
       rating,
     });
   }

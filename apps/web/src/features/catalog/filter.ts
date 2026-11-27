@@ -14,6 +14,9 @@ export const SORT_OPTIONS: { value: Sort; labelFa: string; labelEn: string }[] =
   { value: "bestselling", labelFa: "پرفروش‌ترین", labelEn: "Best selling" },
 ];
 
+/** Products per catalog page (server-side pagination, both adapters). */
+export const PAGE_SIZE = 12;
+
 /** Parses raw searchParams into a validated FilterParams object. */
 export function parseFilterParams(input: Record<string, string | string[] | undefined>): FilterParams {
   const flat: Record<string, string> = {};
@@ -54,6 +57,7 @@ export function applyFilter<T extends {
   stock: number;
   organic: boolean;
   glutenFree: boolean;
+  local: boolean;
   rating: number;
 }>(items: T[], params: FilterParams): T[] {
   let result = items;
@@ -68,6 +72,7 @@ export function applyFilter<T extends {
   if (params.inStock) result = result.filter((item) => item.stock > 0);
   if (params.organic) result = result.filter((item) => item.organic);
   if (params.glutenFree) result = result.filter((item) => item.glutenFree);
+  if (params.local) result = result.filter((item) => item.local);
   if (params.minRating !== undefined) result = result.filter((item) => item.rating >= params.minRating!);
   switch (params.sort) {
     case "cheapest":
@@ -80,4 +85,35 @@ export function applyFilter<T extends {
     default:
       return result;
   }
+}
+
+export interface PageSlice<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/** Slices a filtered list into one page; page is clamped to range. */
+export function paginate<T>(items: T[], page: number | undefined, pageSize: number = PAGE_SIZE): PageSlice<T> {
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(page ?? 1, 1), totalPages);
+  const start = (safePage - 1) * pageSize;
+  return { items: items.slice(start, start + pageSize), total, page: safePage, pageSize, totalPages };
+}
+
+/**
+ * Merges a patch into the current filter state. Changing any filter
+ * (other than the page itself) resets the page to 1; `undefined`
+ * values drop the key entirely.
+ */
+export function updateFilterParams(current: FilterParams, patch: FilterParams): FilterParams {
+  const next: FilterParams = { ...current, ...patch };
+  for (const [key, value] of Object.entries(next)) {
+    if (value === undefined) delete next[key as keyof FilterParams];
+  }
+  if (!("page" in patch)) delete next.page;
+  return next;
 }

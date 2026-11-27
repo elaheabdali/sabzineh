@@ -33,6 +33,37 @@ session's `vendorId`, never by hiding UI.
   time, so a later plan change never rewrites history. Payouts are
   `gross − commission` per vendor per period (`server/billing`).
 
+## Catalog (Week 2)
+
+One `CatalogRepository` interface (`features/catalog/repository.ts`),
+two adapters, one switch — `getCatalogRepository()` returns the
+Prisma adapter when `DATABASE_URL` is set, the seed adapter otherwise:
+
+```
+URL searchParams ──► parseFilterParams (Zod, @sabzineh/types)
+       │                    │  single source of truth
+       ▼                    ▼
+getCatalogRepository() ──► SeedCatalogRepository   (no DATABASE_URL)
+                       └─► PrismaCatalogRepository (DATABASE_URL set)
+                               where/orderBy: features/catalog/prisma.ts
+                               facets: groupBy / aggregate / count
+```
+
+- Filter state: category (slug → descendant ids), price range,
+  vendor, organic / gluten-free / local, min rating, in-stock,
+  text search `q` (title + vendor name), sort, page. Every change
+  rewrites the URL; pages are server-rendered from it.
+- Facet counts are computed on the set matching every filter
+  *except* the facet being counted, so counts never collapse
+  because of the facet itself.
+- Sort: cheapest / priciest / bestselling (rating proxy until
+  order-item aggregates exist) / newest. Page size is 12.
+- Smart search (`features/catalog/smart-search.ts`) is a keyword
+  matcher only — no AI call. Week 7 swaps it for a server AI
+  client behind the same `parseSmartQuery` signature.
+- Reviews on the product page are deterministic demo data
+  (`features/catalog/reviews.ts`) until real reviews exist.
+
 ## Data flow
 
 ```

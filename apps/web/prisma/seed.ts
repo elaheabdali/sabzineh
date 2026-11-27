@@ -67,7 +67,7 @@ async function main() {
   for (const product of seedData.products) {
     const created = await prisma.product.upsert({
       where: { slug: product.slug },
-      update: { price: product.price, stock: product.stock, rating: product.rating },
+      update: { price: product.price, stock: product.stock, rating: product.rating, local: product.local },
       create: {
         id: product.id,
         vendorId: product.vendorId,
@@ -81,6 +81,7 @@ async function main() {
         status: "PUBLISHED",
         organic: product.organic,
         glutenFree: product.glutenFree,
+        local: product.local,
         rating: product.rating,
       },
     });

@@ -24,5 +24,18 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-  # Playwright E2E lands in Week 2 (catalog flows) — the e2e job is added
-  # then, on Chromium + Firefox. Week 1 CI is typecheck/lint/test/build.
+  e2e:
+    name: e2e (chromium + firefox)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web exec playwright install --with-deps chromium firefox
+      - run: pnpm --filter web test:e2e

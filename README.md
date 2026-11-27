@@ -11,11 +11,15 @@ a swappable payment port (Mock today, Zarinpal sandbox next),
 subscription billing on both sides (buyer box + vendor plan),
 and CI running typecheck, lint, Vitest and build on every push.
 
-> **Week 1 status:** monorepo skeleton, Prisma schema (23 models),
-> Persian seed data (3-level category tree, 12 vendors, 120 products),
-> storefront home + category + product pages, MegaMenu, cart store,
-> payment port and SSE stub. No live database yet — the app renders
-> from the seed JSON until `DATABASE_URL` is supplied (see below).
+> **Week 2 status:** full catalog — URL-synced faceted filter
+> (category, price, vendor, organic / gluten-free / local, rating,
+> in-stock, sort, search, pagination), category page with sidebar +
+> mobile drawer + active-filter chips, search page, smart-search
+> stub (keyword matcher, no AI call yet), complete product page
+> (gallery, quantity, reviews, related), and Playwright E2E on
+> Chromium + Firefox. No live database yet — the catalog runs on the
+> seed adapter; the real Prisma adapter is implemented and switches
+> on automatically once `DATABASE_URL` is set (see below).
 
 ## Stack
 
@@ -28,7 +32,7 @@ and CI running typecheck, lint, Vitest and build on every push.
 | Forms | React Hook Form + Zod (shared schemas in `@sabzineh/types`) |
 | i18n | next-intl, `fa` default, full RTL, self-hosted Vazirmatn |
 | Payment | `PaymentPort` — Mock by default, Zarinpal sandbox (`docs/zarinpal-setup.md`) |
-| Tests | Vitest + Testing Library; Playwright from Week 2 |
+| Tests | Vitest + Testing Library; Playwright 1.65.1 (Chromium + Firefox) |
 
 ## Run it
 
@@ -36,6 +40,7 @@ and CI running typecheck, lint, Vitest and build on every push.
 pnpm install
 pnpm dev            # http://localhost:3000 → redirects to /fa
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
+pnpm --filter web test:e2e   # Playwright; builds + serves prod on :3100
 ```
 
 ## Database (needs a Neon project)
@@ -50,6 +55,38 @@ pnpm db:seed
 Until then the storefront renders from `apps/web/src/data/seed.json`
 (the same data the seed script inserts), so the app is fully
 demonstrable without a database.
+
+### Catalog data source: seed adapter vs Prisma adapter
+
+`src/features/catalog/repository.ts` defines one `CatalogRepository`
+interface with two adapters:
+
+- `SeedCatalogRepository` — in-memory over `seed.json`, active while
+  `DATABASE_URL` is unset. Filter, sort, facet counts and pagination
+  have the exact same semantics as the Prisma adapter (same Vitest
+  expectations in `repository.test.ts`).
+- `PrismaCatalogRepository` — real queries: `where`/`orderBy` built
+  by `features/catalog/prisma.ts` (pure, unit-tested functions),
+  facet counts via `groupBy`/`aggregate`, server-side pagination.
+  It is selected automatically by `getCatalogRepository()` as soon
+  as `DATABASE_URL` is set — no page code changes.
+
+The migration for the Week 2 `Product.local` column
+(`0002_add_product_local`) was written by hand from the schema
+because no database was available to run `prisma migrate dev`
+against; verify it with `prisma migrate deploy` once Neon exists.
+
+### If `pnpm install` fails with EPERM chown on the lockfile
+
+On this VM the workspace files are owned by `root:nogroup`, and
+pnpm's atomic lockfile write chowns its temp file to the original
+file's group — which the sandbox refuses (`EPERM: operation not
+permitted, chown '.../pnpm-lock.yaml.<random>'`). Fix once:
+
+```bash
+chown root:root pnpm-lock.yaml node_modules/.pnpm/lock.yaml
+pnpm install --frozen-lockfile
+```
 
 ### If `prisma generate` cannot download engines
 
@@ -121,6 +158,16 @@ sabzineh/
 - [x] Seed: 3-level category tree, 12 vendors, 120 products, 3 demo accounts
 - [x] Vitest + lint + typecheck green from the first commit; CI green
 - [ ] Deploy skeleton to Vercel at end of Week 1 (needs her Vercel project)
+
+## Week 2 done-criteria
+
+- [x] Catalog repository: Prisma `where`/`orderBy` builders + seed adapter behind one interface
+- [x] Faceted filter + sort + search + pagination, all URL-synced (copy-paste reproduces the list)
+- [x] Category page: sidebar, mobile drawer, active-filter chips, subcategories, skeleton
+- [x] Search page (`/search?q=`) + smart-search stub (`parseSmartQuery`, no AI call)
+- [x] Product page: gallery, quantity, stock states, reviews, related products
+- [x] Vitest 67 tests; Playwright E2E on Chromium + Firefox (filter acceptance, search, product/cart)
+- [ ] Real Prisma queries against Neon (blocked on `DATABASE_URL`)
 
 ## Roadmap
 

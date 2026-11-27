@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { buildCategoryTree, getCategoryBySlug, products } from "@/data/seed";
-import { ProductCard } from "@/components/ProductCard";
-import { applyFilter, buildFilterSearchParams, parseFilterParams, SORT_OPTIONS } from "@/features/catalog/filter";
+import { descendantIds, getCatalogRepository } from "@/features/catalog/repository";
+import { parseFilterParams } from "@/features/catalog/filter";
+import { FilterPanel } from "@/components/FilterPanel";
+import { ActiveFilterChips } from "@/components/ActiveFilterChips";
+import { ProductGrid } from "@/components/ProductGrid";
+import { SortSelect } from "@/components/SortSelect";
 import type { Locale } from "@/i18n/routing";
 
 interface CategoryPageProps {
@@ -11,47 +15,61 @@ interface CategoryPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export function generateStaticParams() {
-  return buildCategoryTree().flatMap(function collect(node): { slug: string }[] {
-    return [{ slug: node.slug }, ...node.children.flatMap(collect)];
-  });
+export async function generateStaticParams() {
+  const repo = getCatalogRepository();
+  const tree = await repo.getCategoryTree();
+  const collect = (nodes: Awaited<ReturnType<typeof repo.getCategoryTree>>): { slug: string }[] =>
+    nodes.flatMap((node) => [{ slug: node.slug }, ...collect(node.children)]);
+  return collect(tree);
+}
+
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const repo = getCatalogRepository();
+  const category = await repo.getCategoryBySlug(slug);
+  if (!category) return {};
+  const name = locale === "fa" ? category.nameFa : category.nameEn;
+  return { title: locale === "fa" ? `${name} | سبزینه` : `${name} | Sabzineh` };
 }
 
 /**
- * Category page: real breadcrumb, subcategory counts, and a working
- * URL-synced filter (sort, in-stock, organic). Copying the URL
- * reproduces the exact list — the Week 2 acceptance test.
+ * Category page (Week 2, complete): real breadcrumb with ancestors,
+ * subcategory chips with counts, faceted sidebar + mobile drawer,
+ * active-filter chips, sort, server pagination, loading skeleton.
+ *
+ * The URL is the only source of truth — copying it reproduces the
+ * exact list (the Week 2 acceptance test).
  */
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { locale, slug } = await params;
   const loc = (locale === "en" ? "en" : "fa") as Locale;
   const t = await getTranslations("category");
-  const category = getCategoryBySlug(slug);
-  if (!category) notFound();
+  const repo = getCatalogRepository();
 
-  const tree = buildCategoryTree();
-  const findNode = (nodes: typeof tree, id: string): (typeof tree)[number] | undefined => {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      const found = findNode(node.children, id);
+  const category = await repo.getCategoryBySlug(slug);
+  if (!category) notFound();
+  const tree = await repo.getCategoryTree();
+  const ancestors = await repo.getCategoryAncestors(slug);
+  const categoryIds = descendantIds(tree, slug);
+
+  const filter = parseFilterParams(await searchParams);
+  const [result, facets, vendors] = await Promise.all([
+    repo.listProducts(filter, { categoryIds }),
+    repo.getFacets(filter, { categoryIds }),
+    repo.getVendors(),
+  ]);
+
+  const name = loc === "fa" ? category.nameFa : category.nameEn;
+  const basePath = `/category/${slug}`;
+  const findNode = (nodes: typeof tree): (typeof tree)[number] | undefined => {
+    for (const n of nodes) {
+      if (n.slug === slug) return n;
+      const found = findNode(n.children);
       if (found) return found;
     }
     return undefined;
   };
-  const node = findNode(tree, category.id);
-  const descendantIds = (n: typeof node): string[] =>
-    n ? [n.id, ...n.children.flatMap(descendantIds)] : [];
-  const ids = new Set(descendantIds(node));
-  const inCategory = products.filter((p) => ids.has(p.categoryId));
-
-  const filter = parseFilterParams(await searchParams);
-  const filtered = applyFilter(inCategory, filter);
-
-  const name = loc === "fa" ? category.nameFa : category.nameEn;
-  const toggleLink = (key: "inStock" | "organic") => {
-    const next = { ...filter, [key]: filter[key] ? undefined : true };
-    return `/category/${slug}${buildFilterSearchParams(next)}`;
-  };
+  const children = findNode(tree)?.children ?? [];
 
   return (
     <div className="flex flex-col gap-6 pt-8">
@@ -62,33 +80,41 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
               {loc === "fa" ? "خانه" : "Home"}
             </Link>
           </li>
-          <li aria-hidden="true">/</li>
-          <li aria-current="page" className="font-medium text-ink-900">
-            {name}
-          </li>
+          {ancestors.map((ancestor) => (
+            <li key={ancestor.id} className="flex items-center gap-2">
+              <span aria-hidden="true">/</span>
+              {ancestor.slug === slug ? (
+                <span aria-current="page" className="font-medium text-ink-900">
+                  {loc === "fa" ? ancestor.nameFa : ancestor.nameEn}
+                </span>
+              ) : (
+                <Link href={`/category/${ancestor.slug}`} className="hover:text-leaf-700 hover:underline">
+                  {loc === "fa" ? ancestor.nameFa : ancestor.nameEn}
+                </Link>
+              )}
+            </li>
+          ))}
         </ol>
       </nav>
 
       <header>
         <h1 className="text-2xl font-black text-ink-900">{name}</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          {filtered.length.toLocaleString(loc === "fa" ? "fa-IR" : "en-US")} {t("products")}
-        </p>
       </header>
 
-      {node && node.children.length > 0 ? (
+      {children.length > 0 ? (
         <section aria-labelledby="subcategories">
           <h2 id="subcategories" className="text-sm font-bold text-ink-900">
             {t("subcategories")}
           </h2>
           <ul className="mt-2 flex flex-wrap gap-2">
-            {node.children.map((child) => (
+            {children.map((child) => (
               <li key={child.id}>
                 <Link
                   href={`/category/${child.slug}`}
                   className="inline-block rounded-full border border-cream-200 bg-white px-4 py-2 text-sm text-ink-900 hover:border-leaf-600"
                 >
-                  {loc === "fa" ? child.nameFa : child.nameEn} ({child.productCount.toLocaleString(loc === "fa" ? "fa-IR" : "en-US")})
+                  {loc === "fa" ? child.nameFa : child.nameEn} (
+                  {child.productCount.toLocaleString(loc === "fa" ? "fa-IR" : "en-US")})
                 </Link>
               </li>
             ))}
@@ -96,60 +122,22 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         </section>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2" aria-label={t("sort")}>
-        <span className="text-sm font-medium text-ink-900">{t("sort")}:</span>
-        {SORT_OPTIONS.map((option) => {
-          const active = (filter.sort ?? "newest") === option.value;
-          return (
-            <Link
-              key={option.value}
-              href={`/category/${slug}${buildFilterSearchParams({ ...filter, sort: option.value })}`}
-              aria-current={active ? "true" : undefined}
-              className={
-                active
-                  ? "rounded-full bg-leaf-700 px-3 py-1 text-sm font-medium text-white"
-                  : "rounded-full border border-cream-200 bg-white px-3 py-1 text-sm text-ink-900 hover:border-leaf-600"
-              }
-            >
-              {loc === "fa" ? option.labelFa : option.labelEn}
-            </Link>
-          );
-        })}
-        <Link
-          href={toggleLink("inStock")}
-          aria-pressed={filter.inStock === true}
-          className={
-            filter.inStock
-              ? "rounded-full bg-leaf-700 px-3 py-1 text-sm font-medium text-white"
-              : "rounded-full border border-cream-200 bg-white px-3 py-1 text-sm text-ink-900 hover:border-leaf-600"
-          }
-        >
-          {t("inStockOnly")}
-        </Link>
-        <Link
-          href={toggleLink("organic")}
-          aria-pressed={filter.organic === true}
-          className={
-            filter.organic
-              ? "rounded-full bg-leaf-700 px-3 py-1 text-sm font-medium text-white"
-              : "rounded-full border border-cream-200 bg-white px-3 py-1 text-sm text-ink-900 hover:border-leaf-600"
-          }
-        >
-          {t("organicOnly")}
-        </Link>
-      </div>
-
-      {filtered.length === 0 ? (
-        <p className="rounded-2xl border border-cream-200 bg-white p-8 text-center text-neutral-500">
-          {t("noProducts")}
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {filtered.map((product) => (
-            <ProductCard key={product.id} product={product} locale={loc} />
-          ))}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <FilterPanel basePath={basePath} params={filter} facets={facets} vendors={vendors} locale={loc} />
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <ActiveFilterChips basePath={basePath} params={filter} vendors={vendors} locale={loc} />
+            <SortSelect basePath={basePath} params={filter} locale={loc} />
+          </div>
+          <ProductGrid
+            result={result}
+            basePath={basePath}
+            params={filter}
+            locale={loc}
+            clearHref={basePath}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }

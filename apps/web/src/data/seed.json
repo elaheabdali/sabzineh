@@ -513,6 +513,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -528,6 +529,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4
     },
     {
@@ -543,6 +545,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 3.8
     },
     {
@@ -558,6 +561,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 5
     },
     {
@@ -573,6 +577,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.5
     },
     {
@@ -588,6 +593,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 3.8
     },
     {
@@ -603,6 +609,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.6
     },
     {
@@ -618,6 +625,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.6
     },
     {
@@ -633,6 +641,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 3.9
     },
     {
@@ -648,6 +657,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -663,6 +673,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.1
     },
     {
@@ -678,6 +689,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.7
     },
     {
@@ -693,6 +705,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.9
     },
     {
@@ -708,6 +721,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.7
     },
     {
@@ -723,6 +737,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4
     },
     {
@@ -738,6 +753,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.6
     },
     {
@@ -753,6 +769,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -768,6 +785,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": false,
       "rating": 4.2
     },
     {
@@ -783,6 +801,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 3.7
     },
     {
@@ -798,6 +817,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.3
     },
     {
@@ -813,6 +833,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": false,
       "rating": 4.9
     },
     {
@@ -828,6 +849,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -843,6 +865,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.3
     },
     {
@@ -858,6 +881,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": false,
       "rating": 4.9
     },
     {
@@ -873,6 +897,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 5
     },
     {
@@ -888,6 +913,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.1
     },
     {
@@ -903,6 +929,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.9
     },
     {
@@ -918,6 +945,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.7
     },
     {
@@ -933,6 +961,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.5
     },
     {
@@ -948,6 +977,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": false,
       "rating": 4
     },
     {
@@ -963,6 +993,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -978,6 +1009,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 4.1
     },
     {
@@ -993,6 +1025,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.6
     },
     {
@@ -1008,6 +1041,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -1023,6 +1057,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.9
     },
     {
@@ -1038,6 +1073,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": false,
       "rating": 4.5
     },
     {
@@ -1053,6 +1089,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.2
     },
     {
@@ -1068,6 +1105,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.1
     },
     {
@@ -1083,6 +1121,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": false,
       "rating": 3.7
     },
     {
@@ -1098,6 +1137,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -1113,6 +1153,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -1128,6 +1169,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.6
     },
     {
@@ -1143,6 +1185,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 3.7
     },
     {
@@ -1158,6 +1201,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -1173,6 +1217,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 3.9
     },
     {
@@ -1188,6 +1233,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4
     },
     {
@@ -1203,6 +1249,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 3.8
     },
     {
@@ -1218,6 +1265,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.5
     },
     {
@@ -1233,6 +1281,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.3
     },
     {
@@ -1248,6 +1297,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.8
     },
     {
@@ -1263,6 +1313,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.9
     },
     {
@@ -1278,6 +1329,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.9
     },
     {
@@ -1293,6 +1345,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4
     },
     {
@@ -1308,6 +1361,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.8
     },
     {
@@ -1323,6 +1377,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.7
     },
     {
@@ -1338,6 +1393,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.1
     },
     {
@@ -1353,6 +1409,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": false,
       "rating": 4.1
     },
     {
@@ -1368,6 +1425,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 5
     },
     {
@@ -1383,6 +1441,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 3.6
     },
     {
@@ -1398,6 +1457,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.6
     },
     {
@@ -1413,6 +1473,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.7
     },
     {
@@ -1428,6 +1489,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.2
     },
     {
@@ -1443,6 +1505,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.1
     },
     {
@@ -1458,6 +1521,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 3.8
     },
     {
@@ -1473,6 +1537,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 3.9
     },
     {
@@ -1488,6 +1553,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": false,
       "rating": 3.7
     },
     {
@@ -1503,6 +1569,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 4
     },
     {
@@ -1518,6 +1585,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.8
     },
     {
@@ -1533,6 +1601,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.9
     },
     {
@@ -1548,6 +1617,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 3.8
     },
     {
@@ -1563,6 +1633,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -1578,6 +1649,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.3
     },
     {
@@ -1593,6 +1665,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 4.2
     },
     {
@@ -1608,6 +1681,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.9
     },
     {
@@ -1623,6 +1697,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": false,
       "rating": 4.2
     },
     {
@@ -1638,6 +1713,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.9
     },
     {
@@ -1653,6 +1729,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 4.8
     },
     {
@@ -1668,6 +1745,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.6
     },
     {
@@ -1683,6 +1761,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.5
     },
     {
@@ -1698,6 +1777,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -1713,6 +1793,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 3.9
     },
     {
@@ -1728,6 +1809,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.3
     },
     {
@@ -1743,6 +1825,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.2
     },
     {
@@ -1758,6 +1841,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.4
     },
     {
@@ -1773,6 +1857,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.5
     },
     {
@@ -1788,6 +1873,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -1803,6 +1889,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.2
     },
     {
@@ -1818,6 +1905,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -1833,6 +1921,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.5
     },
     {
@@ -1848,6 +1937,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.5
     },
     {
@@ -1863,6 +1953,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": true,
       "rating": 4.3
     },
     {
@@ -1878,6 +1969,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.9
     },
     {
@@ -1893,6 +1985,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": true,
+      "local": false,
       "rating": 4.7
     },
     {
@@ -1908,6 +2001,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.3
     },
     {
@@ -1923,6 +2017,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.1
     },
     {
@@ -1938,6 +2033,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.7
     },
     {
@@ -1953,6 +2049,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.2
     },
     {
@@ -1968,6 +2065,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4
     },
     {
@@ -1983,6 +2081,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.2
     },
     {
@@ -1998,6 +2097,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -2013,6 +2113,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.1
     },
     {
@@ -2028,6 +2129,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 3.8
     },
     {
@@ -2043,6 +2145,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.8
     },
     {
@@ -2058,6 +2161,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.4
     },
     {
@@ -2073,6 +2177,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": false,
       "rating": 3.7
     },
     {
@@ -2088,6 +2193,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 4.2
     },
     {
@@ -2103,6 +2209,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 3.8
     },
     {
@@ -2118,6 +2225,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 4.9
     },
     {
@@ -2133,6 +2241,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.3
     },
     {
@@ -2148,6 +2257,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -2163,6 +2273,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4.8
     },
     {
@@ -2178,6 +2289,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.8
     },
     {
@@ -2193,6 +2305,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": true,
       "rating": 4.7
     },
     {
@@ -2208,6 +2321,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": false,
+      "local": false,
       "rating": 3.6
     },
     {
@@ -2223,6 +2337,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 5
     },
     {
@@ -2238,6 +2353,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.9
     },
     {
@@ -2253,6 +2369,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 3.8
     },
     {
@@ -2268,6 +2385,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": true,
       "rating": 3.9
     },
     {
@@ -2283,6 +2401,7 @@
       "status": "PUBLISHED",
       "organic": false,
       "glutenFree": true,
+      "local": true,
       "rating": 4.6
     },
     {
@@ -2298,6 +2417,7 @@
       "status": "PUBLISHED",
       "organic": true,
       "glutenFree": false,
+      "local": false,
       "rating": 4
     }
   ],

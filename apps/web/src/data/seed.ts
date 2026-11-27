@@ -37,6 +37,7 @@ export const products: ProductDTO[] = seed.products.map((p) => ({
   status: "PUBLISHED",
   organic: p.organic,
   glutenFree: p.glutenFree,
+  local: p.local,
   rating: p.rating,
 }));
 
@@ -85,8 +86,12 @@ export function getProductsByCategory(categoryId: string): ProductDTO[] {
 }
 
 /** Deterministic SVG placeholder (no external images, no CDN). */
-export function placeholderImage(title: string): string {
+export function placeholderImage(title: string, variant = 0): string {
   const initial = title.trim().charAt(0);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><rect width="800" height="800" fill="#dcead8"/><text x="400" y="440" font-size="280" text-anchor="middle" fill="#265423" font-family="sans-serif">${initial}</text></svg>`;
+  const backgrounds = ["#dcead8", "#e8dcc8", "#d8e2ea"];
+  const foregrounds = ["#265423", "#6b4a1f", "#1f3a5c"];
+  const bg = backgrounds[variant % backgrounds.length];
+  const fg = foregrounds[variant % foregrounds.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><rect width="800" height="800" fill="${bg}"/><text x="400" y="440" font-size="280" text-anchor="middle" fill="${fg}" font-family="sans-serif">${initial}</text></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }

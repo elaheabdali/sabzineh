@@ -21,8 +21,10 @@ export const FilterParamsSchema = z.object({
   inStock: z.coerce.boolean().optional(),
   organic: z.coerce.boolean().optional(),
   glutenFree: z.coerce.boolean().optional(),
+  local: z.coerce.boolean().optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
   sort: SortSchema.optional(),
+  page: z.coerce.number().int().min(1).optional(),
 });
 export type FilterParams = z.infer<typeof FilterParamsSchema>;
 
@@ -59,9 +61,47 @@ export const ProductSchema = z.object({
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
   organic: z.boolean(),
   glutenFree: z.boolean(),
+  local: z.boolean(),
   rating: z.number().min(0).max(5),
 });
 export type ProductDTO = z.infer<typeof ProductSchema>;
+
+/** A catalog review. Seed reviews are deterministic demo data
+ *  (features/catalog/reviews.ts); real reviews come from the DB. */
+export const ReviewSchema = z.object({
+  id: z.string(),
+  author: z.string(),
+  rating: z.number().min(1).max(5),
+  text: z.string(),
+  createdAt: z.string(),
+});
+export type ReviewDTO = z.infer<typeof ReviewSchema>;
+
+/** One page of catalog results (both repository implementations). */
+export const CatalogListResultSchema = z.object({
+  items: z.array(ProductSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  totalPages: z.number().int().min(1),
+});
+export type CatalogListResult = z.infer<typeof CatalogListResultSchema>;
+
+/** Facet counts for the filter sidebar. Each count is computed on the
+ *  result set with that facet's own filter removed (standard faceted
+ *  search), so counts never drop to zero because of the facet itself. */
+export const FacetCountsSchema = z.object({
+  categories: z.array(z.object({ id: z.string(), count: z.number().int().nonnegative() })),
+  vendors: z.array(z.object({ id: z.string(), count: z.number().int().nonnegative() })),
+  attributes: z.object({
+    organic: z.number().int().nonnegative(),
+    glutenFree: z.number().int().nonnegative(),
+    local: z.number().int().nonnegative(),
+    inStock: z.number().int().nonnegative(),
+  }),
+  price: z.object({ min: z.number().int().nonnegative(), max: z.number().int().nonnegative() }),
+});
+export type FacetCounts = z.infer<typeof FacetCountsSchema>;
 
 export const CartItemSchema = z.object({
   productId: z.string(),

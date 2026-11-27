@@ -13,7 +13,7 @@ interface ProductCardProps {
 export function ProductCard({ product, locale }: ProductCardProps) {
   const vendor = getVendorById(product.vendorId);
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-cream-200 bg-white">
+    <article data-testid="product-card" className="flex flex-col overflow-hidden rounded-2xl border border-cream-200 bg-white">
       <Link href={`/product/${product.slug}`} aria-label={product.title}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -26,7 +26,7 @@ export function ProductCard({ product, locale }: ProductCardProps) {
         />
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="text-sm font-bold leading-6 text-ink-900">
+        <h3 data-testid="product-title" className="text-sm font-bold leading-6 text-ink-900">
           <Link href={`/product/${product.slug}`} className="hover:text-leaf-700 hover:underline">
             {product.title}
           </Link>

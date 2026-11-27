@@ -5,6 +5,7 @@ import { Menu, ShoppingBasket, X } from "lucide-react";
 import { MegaMenu, type MegaMenuNode } from "@sabzineh/ui";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useCartStore } from "@/stores/cart";
+import { HeaderSearch } from "./SearchForm";
 import type { Locale } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 
@@ -52,6 +53,7 @@ export function Header({ locale, categoryTree }: HeaderProps) {
             hrefFor={(node) => `/${locale}/category/${node.slug}`}
           />
         </div>
+        <HeaderSearch />
         <div className="ms-auto flex items-center gap-2">
           <Link
             href="/account/orders"
@@ -74,7 +76,7 @@ export function Header({ locale, categoryTree }: HeaderProps) {
             <ShoppingBasket className="size-5" aria-hidden="true" />
             {mounted && count > 0 ? (
               <span className="absolute -end-1 -top-1 flex size-5 items-center justify-center rounded-full bg-leaf-700 text-[11px] font-bold text-white">
-                {count}
+                {count.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
               </span>
             ) : null}
           </Link>

@@ -181,6 +181,7 @@ model Product {
   status         ProductStatus @default(DRAFT)
   organic        Boolean       @default(false)
   glutenFree     Boolean       @default(false)
+  local          Boolean       @default(false)
   attributes     Json?
   rating         Float         @default(0)
   createdAt      DateTime      @default(now())
