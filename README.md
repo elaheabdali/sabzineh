@@ -46,11 +46,16 @@ pnpm --filter web test:e2e   # Playwright; builds + serves prod on :3100
 ## Database (needs a Neon project)
 
 ```bash
-cp .env.example .env   # then set a real DATABASE_URL
+cp .env.example apps/web/.env   # then set a real DATABASE_URL in apps/web/.env
 pnpm --filter web db:generate
-pnpm --filter web exec prisma migrate dev --name init   # or: prisma migrate deploy
-pnpm db:seed
+pnpm --filter web db:migrate   # applies migrations/0001_init + 0002_add_product_local (or: prisma migrate deploy)
+pnpm --filter web db:seed
 ```
+
+> The `.env` file must live in `apps/web/` — that is where the Prisma
+> CLI runs and where Next.js loads env from. A `.env` at the repo root
+> is NOT read, so `DATABASE_URL` there produces
+> `Environment variable not found: DATABASE_URL`.
 
 Until then the storefront renders from `apps/web/src/data/seed.json`
 (the same data the seed script inserts), so the app is fully
