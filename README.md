@@ -11,14 +11,21 @@ a swappable payment port (Mock today, Zarinpal sandbox next),
 subscription billing on both sides (buyer box + vendor plan),
 and CI running typecheck, lint, Vitest and build on every push.
 
-> **Week 2 status:** full catalog — URL-synced faceted filter
-> (category, price, vendor, organic / gluten-free / local, rating,
-> in-stock, sort, search, pagination), category page with sidebar +
-> mobile drawer + active-filter chips, search page, smart-search
-> stub (keyword matcher, no AI call yet), complete product page
-> (gallery, quantity, reviews, related), and Playwright E2E on
-> Chromium + Firefox. No live database yet — the catalog runs on the
-> seed adapter; the real Prisma adapter is implemented and switches
+> **Week 4 status:** live on Vercel — https://sabzineh-web.vercel.app
+> (project `sabzineh-web`, deployment for `38d3458` green, `/fa`
+> returns 200). Real Zarinpal sandbox `PaymentPort` is code-complete
+> (request authority → StartPay → callback → server-side verify,
+> following the ela-coffee pattern verified live twice there),
+> with 15 mocked-HTTP unit tests and a gated sandbox E2E spec
+> (`E2E_ZARINPAL=1`, skipped in CI). The sandbox authority leg was
+> verified live from this machine (real `S000…` authority from the
+> test merchant id) and the gated sandbox E2E passes 6/6 (Chromium
+> + Firefox); the full browser click-through still needs a
+> human on the deployed site. Migrations 0001–0003 were validated
+> offline (24 tables, 17 enums, 186 columns, 25 indexes — all match
+> the schema) and `migration_lock.toml` was added, which
+> `prisma migrate deploy` requires. No live database yet — the app
+> still runs on the seed adapter; the real Prisma adapter switches
 > on automatically once `DATABASE_URL` is set (see below).
 
 ## Stack
@@ -204,7 +211,7 @@ sabzineh/
 - [x] Prisma schema with all models + indexes; migration SQL generated
 - [x] Seed: 3-level category tree, 12 vendors, 120 products, 3 demo accounts
 - [x] Vitest + lint + typecheck green from the first commit; CI green
-- [ ] Deploy skeleton to Vercel at end of Week 1 (needs her Vercel project)
+- [x] Deploy skeleton to Vercel (project `sabzineh-web`, live at https://sabzineh-web.vercel.app — see `docs/vercel-deploy.md`)
 
 ## Week 2 done-criteria
 
@@ -223,7 +230,21 @@ sabzineh/
 - [x] Cart: per-vendor groups, quantity controls capped at stock, persisted cart merged on login, server-side price/stock re-validation at checkout
 - [x] Checkout: address book (Iranian postal code + phone), server-side discount validation (usage cap, min amount, expiry, once per user), wallet full/partial + gateway, idempotent order creation, mock gateway page, cancel/failed path keeps the cart
 - [x] Vitest 104 tests; Playwright E2E on Chromium + Firefox (full purchase flow, cancelled payment, role guards, cross-user isolation)
-- [ ] Real Prisma queries against Neon (blocked on `DATABASE_URL` after password rotation; `prisma migrate deploy` for 0001/0002/0003)
+- [ ] Real Prisma queries against Neon (password rotation declined
+      by her — the leaked string in public git history stays valid,
+      demo data only; `prisma migrate deploy` for 0001/0002/0003
+      still to run once `DATABASE_URL` is set)
+
+## Week 4 done-criteria
+
+- [x] Real Zarinpal sandbox `PaymentPort`: request authority, StartPay redirect, callback, server-side verify (code 100/101 → PAID, error codes → FAILED, transport failures throw so the order stays PENDING and retryable); `ZARINPAL_BASE_URL` escape hatch; refund throws (no Zarinpal refund API — wallet credit is the refund path)
+- [x] 15 mocked-HTTP unit tests for the Zarinpal port (authority, Rial conversion, error codes, amount mismatch, non-JSON/HTTP errors, sandbox/live hosts, 42-char order id, HTTP 401/-51 unpaid authority)
+- [x] Gated sandbox E2E spec (`tests/e2e/zarinpal-sandbox.spec.ts`, skipped unless `E2E_ZARINPAL=1` with `PAYMENT_PROVIDER=zarinpal`): StartPay redirect with a real authority, callback NOK cancels, callback OK for an unpaid authority never marks PAID
+- [x] Sandbox authority leg verified live (real `S000…` authority from the test merchant id); gated sandbox E2E passes 6/6 (Chromium + Firefox); full browser click-through still needs a human on the deployed site
+- [x] Migrations validated offline against the schema (24 tables, 17 enums, 186 columns, 25 indexes — all match); `migration_lock.toml` added (required by `prisma migrate deploy`)
+- [x] Vercel deploy documented (`docs/vercel-deploy.md`): project `sabzineh-web`, live URL verified 200, env-var table, post-deploy checklist
+- [ ] `prisma migrate deploy` + seed against Neon (needs `DATABASE_URL`)
+- [ ] Sandbox click-through on the live site (human, with the test card)
 
 ## Roadmap
 

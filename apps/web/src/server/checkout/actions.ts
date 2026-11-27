@@ -118,6 +118,10 @@ export async function createOrderAction(input: {
     };
   } catch (error) {
     if (error instanceof OrderError) return { ok: false, error: error.code };
+    // Log the real cause server-side: the client only ever sees the
+    // generic "unknown" error, which makes gateway failures
+    // undebuggable (Week 4).
+    console.error("createOrderAction failed", error);
     return { ok: false, error: "unknown" };
   }
 }
