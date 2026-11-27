@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type { Role } from "@sabzineh/types";
 import { getPrismaClient } from "@/lib/prisma";
 import { getUserStore } from "@/lib/auth/store";
@@ -129,6 +129,15 @@ export interface UserSummary {
   vendorId: string | null;
 }
 
+export interface NotificationRecord {
+  id: string;
+  userId: string;
+  type: string;
+  payload: Record<string, unknown>;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
 export interface DataStore {
   listAddresses(userId: string): Promise<AddressRecord[]>;
   createAddress(
@@ -176,6 +185,20 @@ export interface DataStore {
    * on a foreign-key error).
    */
   deleteDiscount(id: string): Promise<boolean>;
+  // --- Notifications (Week 7) -------------------------------------------
+  /** Persist a notification (the SSE bus publishes it separately). */
+  createNotification(
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ): Promise<NotificationRecord>;
+  /** Newest first. */
+  listNotifications(userId: string, limit?: number): Promise<NotificationRecord[]>;
+  countUnreadNotifications(userId: string): Promise<number>;
+  /** Marks one notification read; returns false when it is not theirs. */
+  markNotificationRead(userId: string, id: string): Promise<boolean>;
+  /** Marks every unread notification of the user read. */
+  markAllNotificationsRead(userId: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -552,6 +575,46 @@ export class PrismaDataStore implements DataStore {
     await this.prisma.discount.delete({ where: { id } }).catch(() => null);
     return true;
   }
+
+  // --- Notifications (Week 7) -------------------------------------------
+
+  async createNotification(
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ): Promise<NotificationRecord> {
+    const row = await this.prisma.notification.create({
+      data: { userId, type, payload: payload as Prisma.InputJsonValue },
+    });
+    return { ...row, payload: (row.payload ?? {}) as Record<string, unknown> };
+  }
+
+  async listNotifications(userId: string, limit = 50): Promise<NotificationRecord[]> {
+    const rows = await this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit,
+    });
+    return rows.map((r) => ({ ...r, payload: (r.payload ?? {}) as Record<string, unknown> }));
+  }
+
+  async countUnreadNotifications(userId: string): Promise<number> {
+    return this.prisma.notification.count({ where: { userId, readAt: null } });
+  }
+
+  async markNotificationRead(userId: string, id: string): Promise<boolean> {
+    const updated = await this.prisma.notification
+      .updateMany({ where: { id, userId, readAt: null }, data: { readAt: new Date() } })
+      .catch(() => ({ count: 0 }));
+    return updated.count > 0;
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: { userId, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -572,6 +635,7 @@ export class MemoryDataStore implements DataStore {
   }));
   private orders: OrderRecord[] = [];
   private payments: PaymentRecord[] = [];
+  private notifications: NotificationRecord[] = [];
   private wallets = new Map<string, number>([["u-customer", 150000]]);
 
   async listAddresses(userId: string): Promise<AddressRecord[]> {
@@ -818,6 +882,54 @@ export class MemoryDataStore implements DataStore {
     if (index === -1) return true;
     this.discounts.splice(index, 1);
     return true;
+  }
+
+  // --- Notifications (Week 7) -------------------------------------------
+
+  async createNotification(
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ): Promise<NotificationRecord> {
+    const record: NotificationRecord = {
+      id: `notif-${crypto.randomUUID()}`,
+      userId,
+      type,
+      payload: { ...payload },
+      readAt: null,
+      createdAt: new Date(),
+    };
+    this.notifications.push(record);
+    return { ...record, payload: { ...record.payload } };
+  }
+
+  async listNotifications(userId: string, limit = 50): Promise<NotificationRecord[]> {
+    return this.notifications
+      .filter((n) => n.userId === userId)
+      .map((n, index) => ({ n, index }))
+      .sort(
+        (a, b) =>
+          b.n.createdAt.getTime() - a.n.createdAt.getTime() || b.index - a.index,
+      )
+      .slice(0, limit)
+      .map(({ n }) => ({ ...n, payload: { ...n.payload } }));
+  }
+
+  async countUnreadNotifications(userId: string): Promise<number> {
+    return this.notifications.filter((n) => n.userId === userId && n.readAt === null).length;
+  }
+
+  async markNotificationRead(userId: string, id: string): Promise<boolean> {
+    const found = this.notifications.find((n) => n.id === id && n.userId === userId);
+    if (!found || found.readAt !== null) return false;
+    found.readAt = new Date();
+    return true;
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    for (const n of this.notifications) {
+      if (n.userId === userId && n.readAt === null) n.readAt = new Date();
+    }
   }
 }
 

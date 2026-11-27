@@ -12,6 +12,7 @@ import {
   type UserSummary,
 } from "@/server/store";
 import { getBillingStore } from "@/server/billing/store";
+import { notifyUser } from "@/server/notifications";
 import {
   validateCategoryCreate,
   validateCategoryMove,
@@ -161,6 +162,10 @@ export async function approveVendorAsAdmin(
   if (profile.status !== "PENDING") throw new AdminError("invalid-transition");
   const updated = await repo.setVendorProfileStatus(vendorId, "APPROVED");
   if (!updated) throw new AdminError("not-found");
+  await notifyUser(profile.userId, "vendor-approved", {
+    vendorId,
+    shopName: profile.shopName,
+  });
   await getBillingStore().createAuditLog({
     actorId: adminId,
     action: "vendor.approve",
@@ -184,6 +189,11 @@ export async function rejectVendorAsAdmin(
   if (profile.status !== "PENDING") throw new AdminError("invalid-transition");
   const updated = await repo.setVendorProfileStatus(vendorId, "REJECTED", cleanReason);
   if (!updated) throw new AdminError("not-found");
+  await notifyUser(profile.userId, "vendor-rejected", {
+    vendorId,
+    shopName: profile.shopName,
+    reason: cleanReason,
+  });
   await getBillingStore().createAuditLog({
     actorId: adminId,
     action: "vendor.reject",

@@ -15,6 +15,7 @@ import {
   updateVendorProductAction,
 } from "@/server/vendor/actions";
 import { formatPrice } from "@/lib/format";
+import { generateProductDraft } from "@/features/ai/description";
 import type { Locale } from "@/i18n/routing";
 
 /**
@@ -176,6 +177,26 @@ export function ProductForm({ locale, categories, initial }: ProductFormProps) {
 
   const categoryLabel = categories.find((c) => c.id === categoryId)?.label ?? categoryId;
 
+  /**
+   * Draft helper (Week 7): builds a description + tags from the title,
+   * category and attributes with a fixed template — no AI call. The
+   * vendor edits the draft before saving; nothing is auto-published.
+   */
+  function generateDraft() {
+    if (title.trim().length < 2) return;
+    const draft = generateProductDraft({
+      title,
+      categoryName: categoryLabel,
+      organic,
+      glutenFree,
+      local,
+      price: Number(price) || undefined,
+      locale,
+    });
+    setDescription(draft.description);
+    setTagsText(draft.tags.join("، "));
+  }
+
   return (
     <div className="flex flex-col gap-6" data-testid="product-form" data-step={step}>
       <ol className="flex flex-wrap gap-2 text-sm font-bold" aria-label={t("newProduct")}>
@@ -220,6 +241,18 @@ export function ProductForm({ locale, categories, initial }: ProductFormProps) {
               className="rounded-xl border border-cream-200 bg-white px-4 py-3 text-sm outline-none focus:border-leaf-600"
             />
           </label>
+          <div>
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="generate-description"
+              onClick={generateDraft}
+              disabled={title.trim().length < 2}
+            >
+              {t("generateDescription")}
+            </Button>
+            <p className="mt-1 text-xs text-neutral-500">{t("generateDescriptionHint")}</p>
+          </div>
           <label className="flex flex-col gap-1 text-sm font-medium text-ink-900">
             {t("category")}
             <select

@@ -42,10 +42,10 @@ export function HeaderSearch() {
 
 /**
  * Natural-language search box (search page).
- * Parses the phrase with parseSmartQuery (STUB — keyword matcher,
- * no AI call) and navigates to /search with the derived filters;
- * the original phrase rides along as `smart=` so the page can show
- * which rules matched.
+ * Parses the phrase with parseSmartQuery (deterministic heuristics —
+ * synonyms, typo correction, phrase → filters; no AI call) and
+ * navigates to /search with the derived filters; the original phrase
+ * rides along as `smart=` so the page can show which rules matched.
  */
 export function SmartSearchForm() {
   const t = useTranslations("category");

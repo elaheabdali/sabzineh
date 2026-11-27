@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { useCartStore } from "@/stores/cart";
 import { useCartProducts } from "@/hooks/useCartProducts";
 import { formatPrice } from "@/lib/format";
+import { RecommendationsSection } from "./RecommendationsSection";
 import type { Locale } from "@/i18n/routing";
 
 /**
@@ -130,6 +131,7 @@ export function CartView({ locale }: { locale: Locale }) {
       >
         {t("checkout")}
       </Link>
+      <RecommendationsSection locale={locale} />
     </div>
   );
 }

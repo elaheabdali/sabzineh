@@ -58,9 +58,18 @@ getCatalogRepository() ──► SeedCatalogRepository   (no DATABASE_URL)
   because of the facet itself.
 - Sort: cheapest / priciest / bestselling (rating proxy until
   order-item aggregates exist) / newest. Page size is 12.
-- Smart search (`features/catalog/smart-search.ts`) is a keyword
-  matcher only — no AI call. Week 7 swaps it for a server AI
-  client behind the same `parseSmartQuery` signature.
+- Smart search (`features/catalog/smart-search.ts`) is deterministic
+  heuristics — Persian synonym expansion, typo correction (Levenshtein
+  ≤ 2) and phrase → structured filters. No AI call, no AI API key:
+  there is no external model in this project by design (Iran
+  constraints — no third-party scripts, everything runs on our own
+  server). The same honesty applies to the other two Week 7 "AI"
+  features: recommendations are a documented scoring formula over
+  orders/cart/views (`features/ai/recommendations.ts`), and the
+  assistant chat + vendor description drafts are fixed keyword rules
+  and templates (`features/ai/assistant.ts`, `features/ai/description.ts`).
+  The UI says "AI-assisted" only where the plan says so, and the
+  assistant says when it cannot answer instead of inventing one.
 - Reviews on the product page are deterministic demo data
   (`features/catalog/reviews.ts`) until real reviews exist.
 
@@ -72,8 +81,16 @@ browser ──► Next.js (RSC + Route Handlers)
               ├─ server/billing, server/orders
               ├─ features/catalog (URL-synced filter state)
               └─ Prisma ──► PostgreSQL (Neon)
-SSE: /api/events pushes order status / chat / notifications;
-     the client falls back to polling with backoff when SSE drops.
+SSE: /api/events pushes per-user events (order status, box
+     generated, vendor approval, payout) to the logged-in user's
+     browser only — the route requires a session and subscribes that
+     user on the in-process bus (`server/events.ts`). Every event is
+     first persisted as a Notification row (`server/store.ts`, Prisma
+     when DATABASE_URL is set, in-memory otherwise); the client falls
+     back to polling GET /api/notifications with backoff when SSE
+     drops. Limitation: on serverless hosting each function instance
+     has its own bus, so SSE is a fast path, not the only path —
+     nothing is lost when it drops.
 ```
 
 ## State

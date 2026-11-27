@@ -6,6 +6,7 @@ import { MegaMenu, type MegaMenuNode } from "@sabzineh/ui";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useCartStore } from "@/stores/cart";
 import { HeaderSearch } from "./SearchForm";
+import { NotificationsBell } from "./NotificationsBell";
 import type { Locale } from "@/i18n/routing";
 import type { SessionUser } from "@sabzineh/types";
 import { logoutAction } from "@/server/auth/actions";
@@ -58,6 +59,7 @@ export function Header({ locale, categoryTree, sessionUser }: HeaderProps) {
         </div>
         <HeaderSearch />
         <div className="ms-auto flex items-center gap-2">
+          {sessionUser ? <NotificationsBell locale={locale} /> : null}
           {sessionUser ? (
             <>
               <span className="hidden text-sm font-medium text-ink-900 md:block" data-testid="header-user">

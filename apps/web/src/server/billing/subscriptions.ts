@@ -3,6 +3,7 @@ import type { ProductDTO } from "@sabzineh/types";
 import { getPaymentPort } from "@/lib/payments/port";
 import { getUserStore } from "@/lib/auth/store";
 import { getDataStore, type OrderRecord } from "@/server/store";
+import { notifyUser } from "@/server/notifications";
 import { getVendorRepository } from "@/features/vendor/repository";
 import { commissionRateForPlan, getPlanById, type PlanSummary } from "./plans";
 import {
@@ -304,6 +305,13 @@ export async function generateWeeklyBox(
           weekStart,
           orderId: order.id,
         });
+    if (!existing) {
+      // Week 7: the subscriber hears that this week's box is ready.
+      await notifyUser(subscription.userId, "box-generated", {
+        subscriptionId: subscription.id,
+        weekStart: weekStart.toISOString(),
+      });
+    }
     const invoice = await billing.createInvoice({
       subscriptionId: subscription.id,
       amount: plan.price,

@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { buildCategoryTree, products, vendors, banners } from "@/data/seed";
 import { ProductCard } from "@/components/ProductCard";
+import { RecommendationsSection } from "@/components/RecommendationsSection";
 import type { Locale } from "@/i18n/routing";
 
 interface HomePageProps {
@@ -69,6 +70,8 @@ export default async function HomePage({ params }: HomePageProps) {
           ))}
         </div>
       </section>
+
+      <RecommendationsSection locale={loc} />
 
       <section aria-labelledby="home-vendors">
         <h2 id="home-vendors" className="text-xl font-black text-ink-900">

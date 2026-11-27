@@ -19,7 +19,9 @@
     "categories": "Categories",
     "vendors": "Vendors",
     "allProducts": "All products",
-    "freeDeliveryNote": "Fresh delivery in hygienic packaging"
+    "freeDeliveryNote": "Fresh delivery in hygienic packaging",
+    "recommendedForYou": "Recommended for you",
+    "recommendedHint": "Based on your orders and cart"
   },
   "category": {
     "products": "products",
@@ -57,7 +59,8 @@
     "smartSearch": "Smart search",
     "smartSearchHint": "Try “cheap organic honey” or “gluten-free under 100,000 Toman” — your phrase is turned into filters.",
     "smartSearchPlaceholder": "e.g. cheap organic honey…",
-    "smartMatched": "Detected"
+    "smartMatched": "Detected",
+    "smartCorrected": "Did you mean"
   },
   "product": {
     "addToCart": "Add to cart",
@@ -307,7 +310,9 @@
     "approved": "Approved",
     "paid": "Paid",
     "pending": "Pending",
-    "walletBalance": "Wallet balance"
+    "walletBalance": "Wallet balance",
+    "generateDescription": "Generate description draft",
+    "generateDescriptionHint": "The draft is built from a fixed template; edit it before saving."
   },
   "admin": {
     "dashboard": "Admin dashboard",
@@ -452,5 +457,39 @@
     "subscribeError": "Subscription failed",
     "subscribed": "Subscription activated.",
     "currentPlan": "Current plan"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unread": "unread",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet.",
+    "viewAll": "View all notifications",
+    "orderStatus": "Order status changed",
+    "orderPaid": "Order payment confirmed",
+    "boxGenerated": "Your weekly box is ready",
+    "vendorApproved": "Your shop was approved",
+    "vendorRejected": "Your shop was rejected",
+    "payoutStatus": "Payout status changed"
+  },
+  "assistant": {
+    "title": "Sabzineh assistant",
+    "open": "Open assistant",
+    "close": "Close assistant",
+    "placeholder": "Type your question…",
+    "send": "Send",
+    "hint": "Answers come from real store data; this assistant is not an AI model.",
+    "you": "You",
+    "assistantName": "Assistant",
+    "viewProduct": "View product",
+    "viewOrder": "View order"
+  },
+  "recommendations": {
+    "title": "Recommended for you",
+    "vendorAffinity": "Because you bought from this vendor before",
+    "categoryAffinity": "Because you bought from this category before",
+    "bundle": "Completes your cart",
+    "cartCategory": "Same category as your cart",
+    "viewed": "You viewed this before",
+    "bestseller": "Best-selling and popular"
   }
 }

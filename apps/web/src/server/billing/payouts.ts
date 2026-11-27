@@ -1,4 +1,6 @@
 import { getDataStore } from "@/server/store";
+import { notifyUser } from "@/server/notifications";
+import { getVendorRepository } from "@/features/vendor/repository";
 import { calcPayout } from "./commission";
 import { getBillingStore, type PayoutRecord } from "./store";
 import type { SessionUser } from "@sabzineh/types";
@@ -94,6 +96,14 @@ export async function approvePayout(adminId: string, payoutId: string): Promise<
   if (payout.status !== "REQUESTED") throw new PayoutError("invalid-transition");
   const updated = await store.updatePayoutStatus(payout.id, "APPROVED");
   if (!updated) throw new PayoutError("not-found");
+  // Week 7: the vendor hears about the approval live.
+  const profile = await getVendorRepository().getVendorProfileById(payout.vendorId);
+  if (profile) {
+    await notifyUser(profile.userId, "payout-status", {
+      payoutId: payout.id,
+      status: "APPROVED",
+    });
+  }
   await store.createAuditLog({
     actorId: adminId,
     action: "payout.approve",
@@ -111,6 +121,14 @@ export async function markPayoutPaid(adminId: string, payoutId: string): Promise
   if (payout.status !== "APPROVED") throw new PayoutError("invalid-transition");
   const updated = await store.updatePayoutStatus(payout.id, "PAID");
   if (!updated) throw new PayoutError("not-found");
+  // Week 7: the vendor hears about the payment live.
+  const profile = await getVendorRepository().getVendorProfileById(payout.vendorId);
+  if (profile) {
+    await notifyUser(profile.userId, "payout-status", {
+      payoutId: payout.id,
+      status: "PAID",
+    });
+  }
   await store.createAuditLog({
     actorId: adminId,
     action: "payout.pay",

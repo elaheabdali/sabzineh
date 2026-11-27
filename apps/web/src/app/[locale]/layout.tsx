@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { routing, type Locale } from "@/i18n/routing";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { AssistantChat } from "@/components/AssistantChat";
 import { buildCategoryTree } from "@/data/seed";
 import { getSession } from "@/lib/auth/guards";
 import "../globals.css";
@@ -51,6 +52,7 @@ export default async function LocaleLayout({
           <Header locale={locale} categoryTree={tree} sessionUser={sessionUser} />
           <main className="mx-auto min-h-[60vh] w-full max-w-7xl px-4 pb-16">{children}</main>
           <Footer locale={locale} />
+          <AssistantChat locale={locale} />
         </NextIntlClientProvider>
       </body>
     </html>

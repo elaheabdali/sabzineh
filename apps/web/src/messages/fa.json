@@ -19,7 +19,9 @@
     "categories": "دسته‌بندی‌ها",
     "vendors": "فروشنده‌ها",
     "allProducts": "همه محصولات",
-    "freeDeliveryNote": "ارسال تازه با بسته‌بندی بهداشتی"
+    "freeDeliveryNote": "ارسال تازه با بسته‌بندی بهداشتی",
+    "recommendedForYou": "پیشنهاد برای شما",
+    "recommendedHint": "بر اساس خریدها و سبد شما"
   },
   "category": {
     "products": "محصول",
@@ -57,7 +59,8 @@
     "smartSearch": "جستجوی هوشمند",
     "smartSearchHint": "مثلاً «عسل ارگانیک ارزان» یا «بدون گلوتن زیر ۱۰۰ هزار تومان» — عبارت شما به فیلتر تبدیل می‌شود.",
     "smartSearchPlaceholder": "مثلاً: عسل ارگانیک ارزان…",
-    "smartMatched": "تشخیص داده شد"
+    "smartMatched": "تشخیص داده شد",
+    "smartCorrected": "آیا منظورت این بود"
   },
   "product": {
     "addToCart": "افزودن به سبد",
@@ -307,7 +310,9 @@
     "approved": "تاییدشده",
     "paid": "پرداخت‌شده",
     "pending": "در انتظار",
-    "walletBalance": "موجودی کیف پول"
+    "walletBalance": "موجودی کیف پول",
+    "generateDescription": "تولید پیش‌نویس توضیح",
+    "generateDescriptionHint": "پیش‌نویس با قالب ثابت ساخته می‌شود؛ پیش از ذخیره ویرایشش کنید."
   },
   "admin": {
     "dashboard": "پنل ادمین",
@@ -452,5 +457,39 @@
     "subscribeError": "اشتراک انجام نشد",
     "subscribed": "اشتراک با موفقیت فعال شد.",
     "currentPlan": "پلن فعلی"
+  },
+  "notifications": {
+    "title": "اعلان‌ها",
+    "unread": "خوانده‌نشده",
+    "markAllRead": "همه را خوانده‌شده علامت بزن",
+    "empty": "اعلانی ندارید.",
+    "viewAll": "مشاهده همه اعلان‌ها",
+    "orderStatus": "وضعیت سفارش تغییر کرد",
+    "orderPaid": "پرداخت سفارش تایید شد",
+    "boxGenerated": "باکس هفته شما آماده شد",
+    "vendorApproved": "فروشگاه شما تایید شد",
+    "vendorRejected": "فروشگاه شما رد شد",
+    "payoutStatus": "وضعیت تسویه تغییر کرد"
+  },
+  "assistant": {
+    "title": "دستیار سبزینه",
+    "open": "باز کردن دستیار",
+    "close": "بستن دستیار",
+    "placeholder": "سؤالت را بنویس…",
+    "send": "ارسال",
+    "hint": "پاسخ‌ها بر اساس اطلاعات واقعی فروشگاه داده می‌شوند؛ این دستیار یک مدل هوش مصنوعی نیست.",
+    "you": "شما",
+    "assistantName": "دستیار",
+    "viewProduct": "مشاهده محصول",
+    "viewOrder": "مشاهده سفارش"
+  },
+  "recommendations": {
+    "title": "پیشنهاد برای شما",
+    "vendorAffinity": "چون قبلاً از این فروشنده خریده‌اید",
+    "categoryAffinity": "چون قبلاً از این دسته خریده‌اید",
+    "bundle": "با این‌ها کامل می‌شود",
+    "cartCategory": "هم‌دسته با سبد شما",
+    "viewed": "قبلاً دیده‌اید",
+    "bestseller": "پرفروش و محبوب"
   }
 }

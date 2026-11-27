@@ -11,6 +11,7 @@ import {
 import type { SessionUser } from "@sabzineh/types";
 import { getCatalogRepository } from "@/features/catalog/repository";
 import { getDataStore, type VendorOrderItemRow } from "@/server/store";
+import { notifyUser } from "@/server/notifications";
 import { getBillingStore } from "@/server/billing/store";
 import { vendorProductLimit } from "@/server/billing/subscriptions";
 import {
@@ -218,6 +219,11 @@ export async function transitionVendorOrder(
     throw new VendorServiceError("invalid-transition");
   }
   await store.updateOrderStatus(order.id, parsed.data.toStatus);
+  // Week 7: the customer hears about the status change live.
+  await notifyUser(order.userId, "order-status", {
+    orderId: order.id,
+    status: parsed.data.toStatus,
+  });
   if (parsed.data.toStatus === "DELIVERED") {
     // A delivered box order completes its weekly delivery (Week 6).
     const delivery = await getBillingStore().getBoxDeliveryByOrderId(order.id);

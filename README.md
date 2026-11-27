@@ -220,7 +220,7 @@ sabzineh/
 - [x] Catalog repository: Prisma `where`/`orderBy` builders + seed adapter behind one interface
 - [x] Faceted filter + sort + search + pagination, all URL-synced (copy-paste reproduces the list)
 - [x] Category page: sidebar, mobile drawer, active-filter chips, subcategories, skeleton
-- [x] Search page (`/search?q=`) + smart-search stub (`parseSmartQuery`, no AI call)
+- [x] Search page (`/search?q=`) + smart search (`parseSmartQuery`, deterministic heuristics — synonyms, typo correction, phrase → filters; no AI call, see Week 7)
 - [x] Product page: gallery, quantity, stock states, reviews, related products
 - [x] Vitest 67 tests; Playwright E2E on Chromium + Firefox (filter acceptance, search, product/cart)
 - [ ] Real Prisma queries against Neon (blocked on `DATABASE_URL`)
@@ -305,6 +305,18 @@ vendor-created product was invisible to `/api/catalog/products` (and
 the cart that reads it), even though its public page rendered. The
 data/billing stores already used this singleton pattern; the seed
 arrays were the only ones that didn't.
+
+## Week 7 done-criteria
+
+- [x] Smart search upgraded from the Week 2 stub: Persian synonym expansion (incl. English → Persian), typo-tolerant matching (Levenshtein ≤ 2, corrections shown to the user, never hidden), phrase → structured filters (price below/above/between, min rating, category + vendor by name) — `features/catalog/smart-search.ts`
+- [x] Personalised recommendations ("پیشنهاد برای شما", homepage + cart): deterministic scoring formula over order history + cart + views (`features/ai/recommendations.ts` — vendor affinity +6/order capped at 12, category affinity +4 capped at 8, same-vendor bundle +8, viewed +3), a "why this" line per card, best-seller fallback for guests; served by `GET /api/recommendations`
+- [x] Rule-based shopping assistant (floating panel on every page, `POST /api/assistant`): product search from real catalog data, subscription plans, order status for the caller's own orders only (server-side session scoping), payment/shipping/discount FAQs, honest handoff to human support when it cannot answer; no fake "typing" claims
+- [x] Vendor description/tag draft generator (button in the product form): fixed Persian/English templates + keyword extraction, editable before save, never auto-published (`features/ai/description.ts`)
+- [x] Realtime SSE (`GET /api/events`): session-required, per-user stream on an in-process bus (`server/events.ts`); every event is first persisted as a Notification row (Prisma adapter when `DATABASE_URL` is set, memory adapter otherwise — `server/store.ts`, no new migration: the `Notification` table exists since 0001). Events emitted on payment verified (`order-paid`), order status change, box generated, vendor approved/rejected, payout approved/paid
+- [x] Notifications center: header bell with unread count (SSE live + polling fallback with backoff), list page `/account/notifications` with mark-all-read; the bell and the page stay in sync via a `sabzineh:notifications-changed` event
+- [x] Honest AI note: all three "AI" features are deterministic server-side heuristics — no external AI API, no API key, no third-party script (see `docs/architecture.md`)
+- [x] Vitest 222 tests (34 new: smart search, recommendations, assistant routing, description drafts, event-bus scoping, notification store); Playwright E2E 10 new AI/realtime tests on Chromium + Firefox
+- [ ] `prisma migrate deploy` for 0001–0005 against Neon (needs `DATABASE_URL`) — still never ran, which is why category/product pages fail on the live site (see below)
 
 ### Production status (2026-11-27, still open)
 

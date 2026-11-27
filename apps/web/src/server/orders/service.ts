@@ -7,6 +7,7 @@ import {
   settleOrderPaymentSideEffects,
 } from "@/server/billing/subscriptions";
 import { getDataStore, type DiscountRecord, type OrderRecord } from "@/server/store";
+import { notifyUser } from "@/server/notifications";
 import type { Money, OrderCreateInput } from "@sabzineh/types";
 import { buildOrderPreview, previewItems } from "./create-order";
 
@@ -259,6 +260,8 @@ export async function finalizePayment(authority: string): Promise<OrderRecord> {
     await store.updateOrderStatus(order.id, "PAID");
     // Box invoice / vendor plan paid by this order (Week 6).
     await settleOrderPaymentSideEffects(order);
+    // Week 7: the customer hears about the payment live (SSE + bell).
+    await notifyUser(order.userId, "order-paid", { orderId: order.id, total: order.total });
     const updated = await store.getOrderById(order.id);
     return updated ?? order;
   }
@@ -278,6 +281,8 @@ async function settleFailedPayment(orderId: string): Promise<void> {
     await store.updatePayment(payment.id, { status: "FAILED" });
   }
   await store.updateOrderStatus(orderId, "CANCELLED");
+  // Week 7: the customer hears about the cancellation live.
+  await notifyUser(order.userId, "order-status", { orderId: order.id, status: "CANCELLED" });
   const repo = getCatalogRepository();
   for (const item of order.items) {
     await repo.adjustStock(item.productId, item.qty).catch(() => undefined);

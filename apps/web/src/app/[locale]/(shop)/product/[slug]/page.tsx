@@ -6,6 +6,7 @@ import { getCatalogRepository } from "@/features/catalog/repository";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductGallery } from "@/components/ProductGallery";
 import { ProductPurchaseBox } from "@/components/ProductPurchaseBox";
+import { TrackView } from "@/components/TrackView";
 import { formatJalali, formatPrice } from "@/lib/format";
 import type { Locale } from "@/i18n/routing";
 
@@ -55,6 +56,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="flex flex-col gap-10 pt-8">
+      <TrackView productId={product.id} />
       <nav aria-label="Breadcrumb">
         <ol className="flex flex-wrap items-center gap-2 text-sm text-neutral-500">
           <li>
