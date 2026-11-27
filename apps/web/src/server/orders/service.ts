@@ -1,6 +1,11 @@
 import { calcDiscount, calcSubtotal, calcWalletApplied } from "@/features/catalog/pricing";
 import { getCatalogRepository } from "@/features/catalog/repository";
 import { getPaymentPort } from "@/lib/payments/port";
+import {
+  commissionRateForVendor,
+  settleOrderFailureSideEffects,
+  settleOrderPaymentSideEffects,
+} from "@/server/billing/subscriptions";
 import { getDataStore, type DiscountRecord, type OrderRecord } from "@/server/store";
 import type { Money, OrderCreateInput } from "@sabzineh/types";
 import { buildOrderPreview, previewItems } from "./create-order";
@@ -171,6 +176,14 @@ export async function createOrder(
   }
 
   try {
+    // Commission per vendor, from the vendor's active plan at order
+    // time (Week 6): pro vendors pay 0.08, everyone else 0.12.
+    const rates = new Map<string, number>();
+    for (const line of preview.lines) {
+      if (!rates.has(line.vendorId)) {
+        rates.set(line.vendorId, await commissionRateForVendor(line.vendorId));
+      }
+    }
     const order = await store.createOrder({
       userId,
       items: preview.lines.map((l) => ({
@@ -178,7 +191,7 @@ export async function createOrder(
         vendorId: l.vendorId,
         qty: l.qty,
         unitPrice: l.unitPrice,
-        commissionRate: DEFAULT_COMMISSION_RATE,
+        commissionRate: rates.get(l.vendorId) ?? DEFAULT_COMMISSION_RATE,
       })),
       total: money.gross,
       discountId: money.discountId,
@@ -244,6 +257,8 @@ export async function finalizePayment(authority: string): Promise<OrderRecord> {
   if (result.status === "PAID") {
     await store.updatePayment(payment.id, { status: "PAID", refId: result.refId });
     await store.updateOrderStatus(order.id, "PAID");
+    // Box invoice / vendor plan paid by this order (Week 6).
+    await settleOrderPaymentSideEffects(order);
     const updated = await store.getOrderById(order.id);
     return updated ?? order;
   }
@@ -272,6 +287,8 @@ async function settleFailedPayment(orderId: string): Promise<void> {
       .applyWalletTransaction(order.userId, order.walletApplied, "ORDER_REFUND", order.id)
       .catch(() => undefined);
   }
+  // A failed/cancelled box order skips that week's delivery (Week 6).
+  await settleOrderFailureSideEffects(order);
 }
 
 /** Customer cancels their own PENDING order (cart stays intact elsewhere). */

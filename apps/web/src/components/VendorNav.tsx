@@ -8,6 +8,7 @@ export async function VendorNav() {
     { href: "/vendor/dashboard", label: t("dashboard") },
     { href: "/vendor/products", label: t("products") },
     { href: "/vendor/products/new", label: t("newProduct") },
+    { href: "/vendor/subscription", label: t("subscription") },
     { href: "/vendor/settings", label: t("settings") },
   ];
   return (

@@ -263,6 +263,8 @@ export const VendorProfileSchema = z.object({
   city: z.string(),
   bio: z.string().nullable(),
   status: z.enum(["PENDING", "APPROVED", "REJECTED", "SUSPENDED"]),
+  /** Reason left by an admin when rejecting the request (Week 6). */
+  rejectionReason: z.string().nullable(),
   rating: z.number(),
   phone: z.string().nullable(),
   logoUrl: z.string().nullable(),

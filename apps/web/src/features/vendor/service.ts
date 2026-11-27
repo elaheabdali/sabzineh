@@ -11,6 +11,8 @@ import {
 import type { SessionUser } from "@sabzineh/types";
 import { getCatalogRepository } from "@/features/catalog/repository";
 import { getDataStore, type VendorOrderItemRow } from "@/server/store";
+import { getBillingStore } from "@/server/billing/store";
+import { vendorProductLimit } from "@/server/billing/subscriptions";
 import {
   AuthError,
   SESSION_TTL_MS,
@@ -42,7 +44,8 @@ export class VendorServiceError extends Error {
       | "not-found"
       | "invalid-input"
       | "invalid-transition"
-      | "slug-taken",
+      | "slug-taken"
+      | "product-limit",
   ) {
     super(code);
     this.name = "VendorServiceError";
@@ -136,6 +139,11 @@ export async function createVendorProduct(
     const profile = await getVendorRepository().getVendorProfileByUserId(session.id);
     if (profile?.status !== "APPROVED") throw new VendorServiceError("forbidden");
   }
+  // Product-count cap from the vendor's active plan (Week 6): basic
+  // 20, pro 200. Seed/demo vendors run on basic terms by default.
+  const existing = await getVendorRepository().listVendorProducts(vendorId);
+  const limit = await vendorProductLimit(vendorId);
+  if (existing.length >= limit) throw new VendorServiceError("product-limit");
   // Slug: latin-safe base + random suffix (unique by construction).
   const base = slugifyTitle(parsed.data.title, "product");
   const slug = `${base}-${uniqueSuffix()}`;
@@ -210,6 +218,13 @@ export async function transitionVendorOrder(
     throw new VendorServiceError("invalid-transition");
   }
   await store.updateOrderStatus(order.id, parsed.data.toStatus);
+  if (parsed.data.toStatus === "DELIVERED") {
+    // A delivered box order completes its weekly delivery (Week 6).
+    const delivery = await getBillingStore().getBoxDeliveryByOrderId(order.id);
+    if (delivery && delivery.status === "SCHEDULED") {
+      await getBillingStore().updateBoxDelivery(delivery.id, { status: "DELIVERED" });
+    }
+  }
 }
 
 export async function getVendorProfile(session: SessionUser): Promise<VendorProfileDTO | null> {

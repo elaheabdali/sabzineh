@@ -71,6 +71,16 @@ export interface VendorRepository {
     input: { shopName: string; slug: string; city: string; bio?: string },
   ): Promise<VendorProfileDTO>;
   listPendingVendorProfiles(): Promise<VendorProfileDTO[]>;
+  /**
+   * Admin approval (Week 6): PENDING → APPROVED or REJECTED.
+   * The rejection reason is stored so the vendor can see it on
+   * their dashboard. Returns null when the profile does not exist.
+   */
+  setVendorProfileStatus(
+    vendorId: string,
+    status: "APPROVED" | "REJECTED",
+    rejectionReason?: string | null,
+  ): Promise<VendorProfileDTO | null>;
 }
 
 function withImages(product: ProductDTO): ProductDTO {
@@ -103,6 +113,7 @@ function seedProfileToDTO(
     city: v.city,
     bio: null,
     status: "APPROVED",
+    rejectionReason: null,
     rating: v.rating,
     phone: null,
     logoUrl: null,
@@ -263,6 +274,7 @@ export class MemoryVendorRepository implements VendorRepository {
       city: input.city,
       bio: input.bio ?? null,
       status: "PENDING",
+      rejectionReason: null,
       rating: 0,
       phone: null,
       logoUrl: null,
@@ -271,6 +283,22 @@ export class MemoryVendorRepository implements VendorRepository {
     };
     this.putProfile(profile);
     return { ...profile };
+  }
+
+  async setVendorProfileStatus(
+    vendorId: string,
+    status: "APPROVED" | "REJECTED",
+    rejectionReason?: string | null,
+  ): Promise<VendorProfileDTO | null> {
+    const current = this.getProfile(vendorId);
+    if (!current) return null;
+    const next: VendorProfileDTO = {
+      ...current,
+      status,
+      rejectionReason: status === "REJECTED" ? (rejectionReason ?? null) : null,
+    };
+    this.putProfile(next);
+    return { ...next };
   }
 
   async listPendingVendorProfiles(): Promise<VendorProfileDTO[]> {
@@ -329,6 +357,7 @@ function toProfileDTO(v: PrismaVendorProfile): VendorProfileDTO {
     city: v.city,
     bio: v.bio,
     status: v.status,
+    rejectionReason: v.rejectionReason,
     rating: v.rating,
     phone: v.phone,
     logoUrl: v.logoUrl,
@@ -503,6 +532,23 @@ export class PrismaVendorRepository implements VendorRepository {
       orderBy: { createdAt: "asc" },
     });
     return profiles.map(toProfileDTO);
+  }
+
+  async setVendorProfileStatus(
+    vendorId: string,
+    status: "APPROVED" | "REJECTED",
+    rejectionReason?: string | null,
+  ): Promise<VendorProfileDTO | null> {
+    const profile = await this.prisma.vendorProfile
+      .update({
+        where: { id: vendorId },
+        data: {
+          status,
+          rejectionReason: status === "REJECTED" ? (rejectionReason ?? null) : null,
+        },
+      })
+      .catch(() => null);
+    return profile ? toProfileDTO(profile) : null;
   }
 }
 

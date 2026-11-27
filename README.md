@@ -274,6 +274,50 @@ Order status is a single status per order (Week 1 schema): when a
 vendor advances fulfilment the whole order flips — per-item
 fulfilment is a Week 6+ concern.
 
+## Week 6 done-criteria
+
+- [x] Admin dashboard (`/admin/dashboard`): real stats (users, vendors, orders, revenue), recent 5 orders, low-stock alerts (≤ 5)
+- [x] User management (`/admin/users`): server search + role filter, `DataTable` from `@sabzineh/ui`, detail page, suspend/activate; suspending kills all sessions and the login service blocks suspended users server-side (`loginWithCredentials` throws `suspended`); cannot suspend yourself or the last ACTIVE admin
+- [x] Vendor approval queue (`/admin/vendors`): approve → APPROVED (can publish) / reject with reason (vendor sees it on their dashboard); every action audit-logged (actor, action, target, timestamp); re-approve/re-reject of a decided request is rejected
+- [x] Category tree CRUD (`/admin/categories`): add/edit/rename/reorder/move with pure validation rules (`category-rules.ts`: max 3 levels, no cycles, no self-parent); delete blocked when the category has children or products (reassign products to another category first)
+- [x] Discount code CRUD (`/admin/discounts`): reuses the Week 3 server-side validation; delete blocked when the code was ever used by an order
+- [x] Two-sided subscriptions: (a) buyer weekly box (`/account/subscription`) — pick a plan, pay by wallet or Zarinpal sandbox, pause / skip a week / resume / cancel; a weekly box order is generated per active subscription with deterministic contents (hash-offset pick from in-stock products, priced from the plan) and an invoice; (b) vendor plan (`/vendor/subscription`) — basic 12% commission / 20 products, pro 8% / 200, enforced server-side (product cap on create, commission rate snapshotted on order items); no plan = basic terms
+- [x] Payouts: per-vendor payout computed from DELIVERED order items (gross − snapshotted commission = net), REQUESTED → APPROVED → PAID, one open payout per vendor + period; vendor requests on `/vendor/subscription`, admin approves/marks paid on `/admin/payouts`; payouts are records only — no real bank transfers
+- [x] Order oversight (`/admin/orders`): status/vendor filters, read-only detail with user + product titles; audit log page (`/admin/audit`)
+- [x] Migration `0005_admin_subscriptions` (PayoutStatus REQUESTED/APPROVED, `VendorProfile.rejectionReason`, `BoxDelivery.orderId`); schema validated offline, client regenerated
+- [x] Vitest 188 tests (45 new: approval transitions, suspend blocks login, category-tree rules, subscription lifecycle, payout arithmetic); Playwright E2E 5 new admin tests on Chromium + Firefox (approve → publish, reject with reason, suspend → login blocked, subscribe → pause → resume, sell → deliver → payout → paid)
+- [ ] `prisma migrate deploy` for 0005 against Neon (needs `DATABASE_URL`) — migrations 0001–0005 still never ran against Neon, which is why category/product pages fail on the live site (see below)
+
+### Admin / subscription / payout data: Prisma vs memory adapter (Week 6)
+
+`src/server/billing/store.ts` follows the same pattern:
+`MemoryBillingStore` (module-level maps, seeded with the demo
+customer's ACTIVE box subscription) vs `PrismaBillingStore` (real
+`Subscription` / `BoxDelivery` / `Invoice` / `Payout` / `AuditLog`
+rows), switched by `getBillingStore()` on `DATABASE_URL` only.
+Admin user/vendor/category/discount operations go through the same
+`DataStore` / catalog / vendor repositories as Weeks 2–5.
+**Cross-bundle fix (Week 6):** the seed arrays in `src/data/seed.ts`
+and the image registry in `src/data/product-images.ts` now live on
+`globalThis` — Next.js compiles route handlers into a separate bundle
+from RSC pages, so a module-level array was instantiated twice and a
+vendor-created product was invisible to `/api/catalog/products` (and
+the cart that reads it), even though its public page rendered. The
+data/billing stores already used this singleton pattern; the seed
+arrays were the only ones that didn't.
+
+### Production status (2026-11-27, still open)
+
+Homepage `/fa` loads, but category/product pages fail with a Next.js
+server error on https://sabzineh-web.vercel.app. Diagnosis:
+`DATABASE_URL` is set in Vercel runtime, so the catalog repository
+uses the Prisma adapter, but the Neon database has no tables —
+migrations 0001–0005 were never run (`prisma migrate deploy` + seed
+against Neon, or temporarily remove `DATABASE_URL` from Vercel env so
+the app falls back to seed data). Do not try to fix production from
+this VM: there is no `DATABASE_URL` here and no Vercel API access to
+the team scope.
+
 Week 2 — full catalog: faceted filter, sort, search.
 Week 3 — auth + roles + cart + checkout.
 Week 4 — payments (Zarinpal sandbox), wallet, discounts; live MVP.

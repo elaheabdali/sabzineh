@@ -49,6 +49,8 @@ export interface CatalogRepository {
   getFacets(params: FilterParams, scope?: { categoryIds?: string[] }): Promise<FacetCounts>;
   getProductBySlug(slug: string): Promise<ProductDTO | null>;
   getProductById(id: string): Promise<ProductDTO | null>;
+  /** Every PUBLISHED product (box-content picker, Week 6). */
+  listAllPublishedProducts(): Promise<ProductDTO[]>;
   /**
    * Adjusts stock by delta (negative = reserve at order time, positive =
    * release on cancel). Throws when the result would go below zero.
@@ -60,6 +62,37 @@ export interface CatalogRepository {
   getAllProductSlugs(): Promise<string[]>;
   getCategoryTree(): Promise<CategoryNode[]>;
   getCategoryAncestors(slug: string): Promise<CategoryDTO[]>;
+  /**
+   * Admin category management (Week 6). The tree rules (no cycles,
+   * max 3 levels, no deleting a category that still holds products
+   * unless they are reassigned) live in the admin service — the
+   * repository only does the write and enforces slug uniqueness.
+   */
+  listAllCategories(): Promise<CategoryDTO[]>;
+  createCategory(input: {
+    parentId: string | null;
+    slug: string;
+    nameFa: string;
+    nameEn: string;
+    sortOrder: number;
+  }): Promise<CategoryDTO>;
+  updateCategory(
+    id: string,
+    patch: {
+      parentId?: string | null;
+      slug?: string;
+      nameFa?: string;
+      nameEn?: string;
+      sortOrder?: number;
+    },
+  ): Promise<CategoryDTO | null>;
+  deleteCategory(id: string): Promise<boolean>;
+  countProductsByCategory(categoryId: string): Promise<number>;
+  reassignProducts(fromCategoryId: string, toCategoryId: string): Promise<number>;
+  /** Products at or below the stock threshold (admin low-stock alert). */
+  listLowStockProducts(
+    threshold: number,
+  ): Promise<{ id: string; title: string; stock: number; vendorId: string }[]>;
   getVendorById(id: string): Promise<VendorDTO | null>;
   getVendors(): Promise<VendorDTO[]>;
   getRelatedProducts(product: ProductDTO, limit?: number): Promise<ProductDTO[]>;
@@ -186,6 +219,10 @@ export class SeedCatalogRepository implements CatalogRepository {
     return product ? withImages(product) : null;
   }
 
+  async listAllPublishedProducts(): Promise<ProductDTO[]> {
+    return seedProducts.filter((p) => p.status === "PUBLISHED").map(withImages);
+  }
+
   async adjustStock(productId: string, delta: number): Promise<number> {
     const product = seedProducts.find((p) => p.id === productId);
     if (!product) throw new Error(`Unknown product: ${productId}`);
@@ -203,6 +240,75 @@ export class SeedCatalogRepository implements CatalogRepository {
 
   async getCategoryById(id: string): Promise<CategoryDTO | null> {
     return categories.find((c) => c.id === id) ?? null;
+  }
+
+  async listAllCategories(): Promise<CategoryDTO[]> {
+    return [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  async createCategory(input: {
+    parentId: string | null;
+    slug: string;
+    nameFa: string;
+    nameEn: string;
+    sortOrder: number;
+  }): Promise<CategoryDTO> {
+    if (categories.some((c) => c.slug === input.slug)) {
+      throw new Error(`Category slug already exists: ${input.slug}`);
+    }
+    const record: CategoryDTO = { id: `c-${crypto.randomUUID().slice(0, 8)}`, ...input };
+    categories.push(record);
+    return { ...record };
+  }
+
+  async updateCategory(
+    id: string,
+    patch: {
+      parentId?: string | null;
+      slug?: string;
+      nameFa?: string;
+      nameEn?: string;
+      sortOrder?: number;
+    },
+  ): Promise<CategoryDTO | null> {
+    const found = categories.find((c) => c.id === id);
+    if (!found) return null;
+    if (patch.slug && categories.some((c) => c.id !== id && c.slug === patch.slug)) {
+      throw new Error(`Category slug already exists: ${patch.slug}`);
+    }
+    Object.assign(found, patch);
+    return { ...found };
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    const index = categories.findIndex((c) => c.id === id);
+    if (index === -1) return false;
+    categories.splice(index, 1);
+    return true;
+  }
+
+  async countProductsByCategory(categoryId: string): Promise<number> {
+    return seedProducts.filter((p) => p.categoryId === categoryId).length;
+  }
+
+  async reassignProducts(fromCategoryId: string, toCategoryId: string): Promise<number> {
+    let moved = 0;
+    for (const product of seedProducts) {
+      if (product.categoryId === fromCategoryId) {
+        product.categoryId = toCategoryId;
+        moved += 1;
+      }
+    }
+    return moved;
+  }
+
+  async listLowStockProducts(
+    threshold: number,
+  ): Promise<{ id: string; title: string; stock: number; vendorId: string }[]> {
+    return seedProducts
+      .filter((p) => p.status !== "ARCHIVED" && p.stock <= threshold)
+      .sort((a, b) => a.stock - b.stock)
+      .map((p) => ({ id: p.id, title: p.title, stock: p.stock, vendorId: p.vendorId }));
   }
 
   async getAllProductSlugs(): Promise<string[]> {
@@ -371,6 +477,15 @@ export class PrismaCatalogRepository implements CatalogRepository {
     return product ? toProductDTOWithImages(product) : null;
   }
 
+  async listAllPublishedProducts(): Promise<ProductDTO[]> {
+    const items = await this.prisma.product.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: { id: "asc" },
+      include: productImagesInclude,
+    });
+    return items.map(toProductDTOWithImages);
+  }
+
   async adjustStock(productId: string, delta: number): Promise<number> {
     // Guarded update: only applies when the result stays >= 0, so two
     // concurrent checkouts cannot oversell the same product.
@@ -418,6 +533,87 @@ export class PrismaCatalogRepository implements CatalogRepository {
           sortOrder: category.sortOrder,
         }
       : null;
+  }
+
+  private toCategoryDTO(c: {
+    id: string;
+    parentId: string | null;
+    slug: string;
+    nameFa: string;
+    nameEn: string;
+    sortOrder: number;
+  }): CategoryDTO {
+    return { ...c };
+  }
+
+  async listAllCategories(): Promise<CategoryDTO[]> {
+    const rows = await this.prisma.category.findMany({ orderBy: { sortOrder: "asc" } });
+    return rows.map((c) => this.toCategoryDTO(c));
+  }
+
+  async createCategory(input: {
+    parentId: string | null;
+    slug: string;
+    nameFa: string;
+    nameEn: string;
+    sortOrder: number;
+  }): Promise<CategoryDTO> {
+    try {
+      const row = await this.prisma.category.create({ data: input });
+      return this.toCategoryDTO(row);
+    } catch {
+      throw new Error(`Category slug already exists: ${input.slug}`);
+    }
+  }
+
+  async updateCategory(
+    id: string,
+    patch: {
+      parentId?: string | null;
+      slug?: string;
+      nameFa?: string;
+      nameEn?: string;
+      sortOrder?: number;
+    },
+  ): Promise<CategoryDTO | null> {
+    try {
+      const row = await this.prisma.category.update({ where: { id }, data: patch });
+      return this.toCategoryDTO(row);
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    try {
+      await this.prisma.category.delete({ where: { id } });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async countProductsByCategory(categoryId: string): Promise<number> {
+    return this.prisma.product.count({ where: { categoryId } });
+  }
+
+  async reassignProducts(fromCategoryId: string, toCategoryId: string): Promise<number> {
+    const result = await this.prisma.product.updateMany({
+      where: { categoryId: fromCategoryId },
+      data: { categoryId: toCategoryId },
+    });
+    return result.count;
+  }
+
+  async listLowStockProducts(
+    threshold: number,
+  ): Promise<{ id: string; title: string; stock: number; vendorId: string }[]> {
+    const rows = await this.prisma.product.findMany({
+      where: { status: { not: "ARCHIVED" }, stock: { lte: threshold } },
+      orderBy: { stock: "asc" },
+      select: { id: true, title: true, stock: true, vendorId: true },
+    });
+    return rows;
   }
 
   async getAllProductSlugs(): Promise<string[]> {

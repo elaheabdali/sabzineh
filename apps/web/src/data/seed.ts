@@ -2,44 +2,68 @@
  * Seed-data accessors for the no-DB storefront.
  * The same JSON feeds Prisma seed (prisma/seed.ts); when DATABASE_URL
  * is set, these helpers are replaced by Prisma queries (Week 2+).
+ *
+ * The mutable arrays live on `globalThis` — the same singleton
+ * pattern as the data/billing stores. Next.js compiles route
+ * handlers into a separate bundle from RSC pages and server actions,
+ * so a module-level array would be instantiated twice: a product
+ * created through a server action would be invisible to the catalog
+ * API route (and the cart that reads it). Sharing one array object
+ * per process keeps every bundle reading the same store.
  */
 import seed from "./seed.json";
 import type { CategoryDTO, ProductDTO, VendorDTO } from "@sabzineh/types";
 
-export const categories: CategoryDTO[] = seed.categories.map((c) => ({
-  id: c.id,
-  parentId: c.parentId,
-  slug: c.slug,
-  nameFa: c.nameFa,
-  nameEn: c.nameEn,
-  sortOrder: c.sortOrder,
-}));
+const globalForSeed = globalThis as unknown as {
+  sabzinehSeed?: {
+    categories: CategoryDTO[];
+    vendors: VendorDTO[];
+    products: ProductDTO[];
+  };
+};
 
-export const vendors: VendorDTO[] = seed.vendors.map((v) => ({
-  id: v.id,
-  shopName: v.shopName,
-  slug: v.slug,
-  city: v.city,
-  rating: v.rating,
-  status: "APPROVED",
-}));
+function buildSeedData() {
+  return {
+    categories: seed.categories.map((c) => ({
+      id: c.id,
+      parentId: c.parentId,
+      slug: c.slug,
+      nameFa: c.nameFa,
+      nameEn: c.nameEn,
+      sortOrder: c.sortOrder,
+    })),
+    vendors: seed.vendors.map((v) => ({
+      id: v.id,
+      shopName: v.shopName,
+      slug: v.slug,
+      city: v.city,
+      rating: v.rating,
+      status: "APPROVED" as const,
+    })),
+    products: seed.products.map((p) => ({
+      id: p.id,
+      vendorId: p.vendorId,
+      categoryId: p.categoryId,
+      title: p.title,
+      slug: p.slug,
+      description: p.description,
+      price: p.price,
+      compareAtPrice: p.compareAtPrice,
+      stock: p.stock,
+      status: "PUBLISHED" as const,
+      organic: p.organic,
+      glutenFree: p.glutenFree,
+      local: p.local,
+      rating: p.rating,
+    })),
+  };
+}
 
-export const products: ProductDTO[] = seed.products.map((p) => ({
-  id: p.id,
-  vendorId: p.vendorId,
-  categoryId: p.categoryId,
-  title: p.title,
-  slug: p.slug,
-  description: p.description,
-  price: p.price,
-  compareAtPrice: p.compareAtPrice,
-  stock: p.stock,
-  status: "PUBLISHED",
-  organic: p.organic,
-  glutenFree: p.glutenFree,
-  local: p.local,
-  rating: p.rating,
-}));
+const sharedSeed = (globalForSeed.sabzinehSeed ??= buildSeedData());
+
+export const categories: CategoryDTO[] = sharedSeed.categories;
+export const vendors: VendorDTO[] = sharedSeed.vendors;
+export const products: ProductDTO[] = sharedSeed.products;
 
 export const plans = seed.plans;
 export const discounts = seed.discounts;

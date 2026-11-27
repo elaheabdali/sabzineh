@@ -22,7 +22,7 @@ import { SESSION_COOKIE } from "./lib/auth/cookies";
 const intlMiddleware = createMiddleware(routing);
 
 const PROTECTED =
-  /^\/(fa|en)\/(account|admin)(\/|$)|^\/(fa|en)\/vendor\/(dashboard|products|settings)(\/|$)/;
+  /^\/(fa|en)\/(account|admin)(\/|$)|^\/(fa|en)\/vendor\/(dashboard|products|settings|subscription)(\/|$)/;
 
 export function proxy(request: NextRequest) {
   const response = intlMiddleware(request);

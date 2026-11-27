@@ -91,6 +91,22 @@ export interface AdminStats {
   pendingVendors: number;
 }
 
+export interface OrderFilters {
+  status?: OrderStatus;
+  vendorId?: string;
+  from?: Date;
+  to?: Date;
+}
+
+export interface DiscountInput {
+  code: string;
+  type: "PERCENT" | "FIXED";
+  value: number;
+  minAmount: number;
+  usageLimit: number | null;
+  expiresAt: Date | null;
+}
+
 export interface CreateOrderInput {
   userId: string;
   items: { productId: string; vendorId: string; qty: number; unitPrice: number; commissionRate: number }[];
@@ -99,7 +115,8 @@ export interface CreateOrderInput {
   discountAmount: number;
   walletApplied: number;
   payable: number;
-  addressId: string;
+  /** Null for box/plan orders (Week 6): they ship to the default address on file, not a checkout address. */
+  addressId: string | null;
   idempotencyKey: string;
 }
 
@@ -144,6 +161,21 @@ export interface DataStore {
   updatePayment(id: string, patch: { status?: PaymentStatus; refId?: string | null }): Promise<void>;
   listUsers(): Promise<UserSummary[]>;
   getAdminStats(): Promise<AdminStats>;
+  /** Admin order oversight (Week 6): every order, newest first. */
+  listAllOrders(filters?: OrderFilters): Promise<OrderRecord[]>;
+  /** Admin discount management (Week 6). */
+  listDiscounts(): Promise<DiscountRecord[]>;
+  createDiscount(input: DiscountInput): Promise<DiscountRecord>;
+  updateDiscount(
+    id: string,
+    patch: Partial<Omit<DiscountInput, "code">> & { code?: string },
+  ): Promise<DiscountRecord | null>;
+  /**
+   * Deletes a discount only when no order ever used it (returns false
+   * when it is in use — the caller shows "in use" instead of failing
+   * on a foreign-key error).
+   */
+  deleteDiscount(id: string): Promise<boolean>;
 }
 
 // ---------------------------------------------------------------------------
@@ -446,6 +478,80 @@ export class PrismaDataStore implements DataStore {
       pendingVendors,
     };
   }
+
+  async listAllOrders(filters?: OrderFilters): Promise<OrderRecord[]> {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        ...(filters?.status ? { status: filters.status } : {}),
+        ...(filters?.from || filters?.to
+          ? { createdAt: { gte: filters.from, lte: filters.to } }
+          : {}),
+        ...(filters?.vendorId ? { items: { some: { vendorId: filters.vendorId } } } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      include: orderWithItems,
+    });
+    return orders.map(toOrderRecord);
+  }
+
+  private toDiscountRecord(row: {
+    id: string;
+    code: string;
+    type: "PERCENT" | "FIXED";
+    value: number;
+    minAmount: number;
+    usageLimit: number | null;
+    usedCount: number;
+    expiresAt: Date | null;
+  }): DiscountRecord {
+    return { ...row };
+  }
+
+  async listDiscounts(): Promise<DiscountRecord[]> {
+    const rows = await this.prisma.discount.findMany({ orderBy: { createdAt: "asc" } });
+    return rows.map((r) => this.toDiscountRecord(r));
+  }
+
+  async createDiscount(input: DiscountInput): Promise<DiscountRecord> {
+    const row = await this.prisma.discount.create({
+      data: {
+        code: input.code.toUpperCase(),
+        type: input.type,
+        value: input.value,
+        minAmount: input.minAmount,
+        usageLimit: input.usageLimit,
+        expiresAt: input.expiresAt,
+      },
+    });
+    return this.toDiscountRecord(row);
+  }
+
+  async updateDiscount(
+    id: string,
+    patch: Partial<Omit<DiscountInput, "code">> & { code?: string },
+  ): Promise<DiscountRecord | null> {
+    const row = await this.prisma.discount
+      .update({
+        where: { id },
+        data: {
+          ...(patch.code ? { code: patch.code.toUpperCase() } : {}),
+          ...(patch.type ? { type: patch.type } : {}),
+          ...(patch.value !== undefined ? { value: patch.value } : {}),
+          ...(patch.minAmount !== undefined ? { minAmount: patch.minAmount } : {}),
+          ...(patch.usageLimit !== undefined ? { usageLimit: patch.usageLimit } : {}),
+          ...(patch.expiresAt !== undefined ? { expiresAt: patch.expiresAt } : {}),
+        },
+      })
+      .catch(() => null);
+    return row ? this.toDiscountRecord(row) : null;
+  }
+
+  async deleteDiscount(id: string): Promise<boolean> {
+    const used = await this.prisma.order.count({ where: { discountId: id } });
+    if (used > 0) return false;
+    await this.prisma.discount.delete({ where: { id } }).catch(() => null);
+    return true;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +753,71 @@ export class MemoryDataStore implements DataStore {
       // seed vendors are all APPROVED, so nothing is pending.
       pendingVendors: 0,
     };
+  }
+
+  async listAllOrders(filters?: OrderFilters): Promise<OrderRecord[]> {
+    return this.orders
+      .filter((o) => {
+        if (filters?.status && o.status !== filters.status) return false;
+        if (filters?.from && o.createdAt < filters.from) return false;
+        if (filters?.to && o.createdAt > filters.to) return false;
+        if (filters?.vendorId && !o.items.some((i) => i.vendorId === filters.vendorId)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((o) => structuredClone(o));
+  }
+
+  async listDiscounts(): Promise<DiscountRecord[]> {
+    return this.discounts.map((d) => ({ ...d }));
+  }
+
+  async createDiscount(input: DiscountInput): Promise<DiscountRecord> {
+    const code = input.code.toUpperCase();
+    if (this.discounts.some((d) => d.code === code)) {
+      throw new Error(`Discount code already exists: ${code}`);
+    }
+    const record: DiscountRecord = {
+      id: `discount-${crypto.randomUUID()}`,
+      code,
+      type: input.type,
+      value: input.value,
+      minAmount: input.minAmount,
+      usageLimit: input.usageLimit,
+      usedCount: 0,
+      expiresAt: input.expiresAt,
+    };
+    this.discounts.push(record);
+    return { ...record };
+  }
+
+  async updateDiscount(
+    id: string,
+    patch: Partial<Omit<DiscountInput, "code">> & { code?: string },
+  ): Promise<DiscountRecord | null> {
+    const found = this.discounts.find((d) => d.id === id);
+    if (!found) return null;
+    if (patch.code) {
+      const code = patch.code.toUpperCase();
+      if (this.discounts.some((d) => d.id !== id && d.code === code)) return null;
+      found.code = code;
+    }
+    if (patch.type) found.type = patch.type;
+    if (patch.value !== undefined) found.value = patch.value;
+    if (patch.minAmount !== undefined) found.minAmount = patch.minAmount;
+    if (patch.usageLimit !== undefined) found.usageLimit = patch.usageLimit;
+    if (patch.expiresAt !== undefined) found.expiresAt = patch.expiresAt;
+    return { ...found };
+  }
+
+  async deleteDiscount(id: string): Promise<boolean> {
+    if (this.orders.some((o) => o.discountId === id)) return false;
+    const index = this.discounts.findIndex((d) => d.id === id);
+    if (index === -1) return true;
+    this.discounts.splice(index, 1);
+    return true;
   }
 }
 

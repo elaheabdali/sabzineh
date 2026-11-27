@@ -48,6 +48,12 @@ export interface UserStore {
     passwordHash: string;
   }): Promise<UserRecord>;
   listAll(): Promise<UserRecord[]>;
+  /**
+   * Admin suspend/activate (Week 6). Suspended users cannot log in
+   * (loginWithCredentials throws "suspended") and their existing
+   * sessions stop resolving — the caller invalidates sessions too.
+   */
+  setUserStatus(id: string, status: "ACTIVE" | "SUSPENDED"): Promise<UserRecord | null>;
   getVendorIdByUserId(userId: string): Promise<string | null>;
   /**
    * Links a vendor profile to a user (vendor registration, Week 5).
@@ -139,6 +145,20 @@ export class PrismaUserStore implements UserStore {
       include: { vendorProfile: { select: { id: true } } },
     });
     return users.map((u) => toUserRecord(u, u.vendorProfile?.id ?? null));
+  }
+
+  async setUserStatus(
+    id: string,
+    status: "ACTIVE" | "SUSPENDED",
+  ): Promise<UserRecord | null> {
+    const user = await this.prisma.user
+      .update({
+        where: { id },
+        data: { status },
+        include: { vendorProfile: { select: { id: true } } },
+      })
+      .catch(() => null);
+    return user ? toUserRecord(user, user.vendorProfile?.id ?? null) : null;
   }
 
   async getVendorIdByUserId(userId: string): Promise<string | null> {
@@ -261,6 +281,17 @@ export class MemoryUserStore implements UserStore {
   async listAll(): Promise<UserRecord[]> {
     await this.ensureSeeded();
     return [...this.users.values()].map((u) => ({ ...u }));
+  }
+
+  async setUserStatus(
+    id: string,
+    status: "ACTIVE" | "SUSPENDED",
+  ): Promise<UserRecord | null> {
+    await this.ensureSeeded();
+    const user = this.users.get(id);
+    if (!user) return null;
+    user.status = status;
+    return { ...user };
   }
 
   async getVendorIdByUserId(userId: string): Promise<string | null> {

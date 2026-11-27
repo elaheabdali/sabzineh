@@ -60,6 +60,21 @@ export default async function VendorDashboardPage({
         </div>
       ) : null}
 
+      {data.profile?.status === "REJECTED" ? (
+        <div
+          role="status"
+          data-testid="vendor-rejected"
+          className="rounded-2xl border border-red-300 bg-red-50 p-4"
+        >
+          <p className="text-sm font-bold text-red-800">{t("rejectedReview")}</p>
+          {data.profile.rejectionReason ? (
+            <p className="mt-1 text-sm text-red-700" data-testid="vendor-rejection-reason">
+              {data.profile.rejectionReason}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-cream-200 bg-white p-4">
           <p className="text-xs text-neutral-500">{t("revenue")}</p>

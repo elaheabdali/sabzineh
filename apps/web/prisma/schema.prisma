@@ -92,7 +92,12 @@ enum InvoiceStatus {
 }
 
 enum PayoutStatus {
+  /** Computed by the platform, not yet claimed by the vendor. */
   PENDING
+  /** Vendor requested the payout; awaiting admin approval. */
+  REQUESTED
+  /** Approved by an admin; awaiting the actual transfer. */
+  APPROVED
   PAID
 }
 
@@ -158,6 +163,8 @@ model VendorProfile {
   city      String
   bio       String?
   status    VendorStatus @default(PENDING)
+  /** Reason shown to the vendor when an admin rejects the request. */
+  rejectionReason String?
   rating    Float        @default(0)
   // Week 5: profile settings. Payout fields are stored only — the
   // public shop page never renders them.
@@ -250,6 +257,8 @@ model Order {
 
   items    OrderItem[]
   payments Payment[]
+  /** Weekly box deliveries fulfilled by this order (Week 6). */
+  boxDeliveries BoxDelivery[] @relation("BoxDeliveryOrder")
 
   @@index([userId, createdAt])
 }
@@ -355,6 +364,9 @@ model BoxDelivery {
   subscription   Subscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   weekStart      DateTime
   status         BoxDeliveryStatus @default(SCHEDULED)
+  /** Weekly box order generated for this delivery (Week 6). */
+  orderId        String?
+  order          Order?            @relation("BoxDeliveryOrder", fields: [orderId], references: [id], onDelete: SetNull)
   createdAt      DateTime          @default(now())
 
   @@index([subscriptionId, weekStart])
