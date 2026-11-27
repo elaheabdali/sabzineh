@@ -115,8 +115,10 @@ expiry; the cookie (`sabzineh-session`, httpOnly, sameSite=lax,
 secure in production) carries only the token. `getSession()` in
 `src/lib/auth/guards.ts` resolves the token server-side and never
 trusts a client-supplied role. `src/proxy.ts` redirects guests
-away from `/account`, `/vendor` and `/admin` when the cookie is
-absent (fast path only — the page guards do the real check).
+away from `/account`, the vendor panel (`/vendor/dashboard`,
+`/vendor/products`, `/vendor/settings`) and `/admin` when the cookie is
+absent (fast path only — the page guards do the real check). The
+public shop page (`/vendor/<shop-slug>`) is open to guests.
 
 Checkout rules (all server-side, `src/server/orders/service.ts`):
 prices and stock are re-read at order time, the same
@@ -246,7 +248,31 @@ sabzineh/
 - [ ] `prisma migrate deploy` + seed against Neon (needs `DATABASE_URL`)
 - [ ] Sandbox click-through on the live site (human, with the test card)
 
-## Roadmap
+## Week 5 done-criteria
+
+- [x] Vendor dashboard: revenue / order count / product count, top-5 products, incoming order list with fulfilment buttons (PAID → PREPARING → SHIPPED → DELIVERED, one step at a time, server-side); a PENDING vendor sees an "under review" banner
+- [x] Multi-step product form (basics → images → attributes → review), per-step Zod validation on client and server; Uploader (drag-and-drop, max 4 × 1 MB, data: URLs in demo mode, `serverActions.bodySizeLimit: "5mb"`); draft vs published — drafts never appear in the public catalog (both adapters gate on `PUBLISHED`)
+- [x] Product management: search + status filter, edit (same form, prefilled), publish/unpublish/archive, quick stock +/− with the catalog guard
+- [x] Vendor profile/settings: shop name, city, bio, phone, logo URL, payout IBAN + account holder (stored only — migration `0004_vendor_profile_fields` — never rendered publicly); public shop page `/vendor/<slug>` for APPROVED vendors only
+- [x] Vendor registration (`/auth/vendor-register`): creates a VENDOR user + PENDING profile; the vendor can draft but cannot publish until admin approval (Week 6)
+- [x] Scoping: every vendor query is filtered by the session vendorId server-side; cross-vendor read/update/publish/restock/order-transition all fail (unit + E2E); the proxy now protects only the panel paths — the public shop page is open to guests
+- [x] Vitest 143 tests (24 new); Playwright E2E 9 new vendor tests on Chromium + Firefox (create → publish → catalog, draft 404, edit stock, cross-vendor isolation, registration, shop page, fulfilment)
+- [ ] `prisma migrate deploy` for 0004 against Neon (needs `DATABASE_URL`)
+
+### Vendor data: Prisma vs memory adapter (Week 5)
+
+`src/features/vendor/repository.ts` follows the Week 2 pattern:
+`MemoryVendorRepository` (seed products array + module-level image/
+attribute registries) vs `PrismaVendorRepository` (real `Product` /
+`ProductImage` / `VendorProfile` rows), switched by
+`getVendorRepository()` on `DATABASE_URL` only. Vendor-created
+products are appended to the same seed `products` array the catalog
+reads, so a PUBLISHED product shows up in the storefront in the same
+process; uploaded images ride as data: URLs (`src/data/product-
+images.ts`) and are served under the CSP `img-src 'self' data:`.
+Order status is a single status per order (Week 1 schema): when a
+vendor advances fulfilment the whole order flips — per-item
+fulfilment is a Week 6+ concern.
 
 Week 2 — full catalog: faceted filter, sort, search.
 Week 3 — auth + roles + cart + checkout.

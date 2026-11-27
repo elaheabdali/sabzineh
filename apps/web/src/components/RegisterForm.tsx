@@ -18,8 +18,8 @@ const ERROR_KEY: Record<string, string> = {
 };
 
 /**
- * Customer registration (Week 3). Vendor registration is a Week 5/6
- * concern — the note below points vendors to the panel instead.
+ * Customer registration (Week 3). The note below links vendors to
+ * the vendor registration page (Week 5).
  */
 export function RegisterForm({ next }: { next: string }) {
   const t = useTranslations("auth");
@@ -90,7 +90,12 @@ export function RegisterForm({ next }: { next: string }) {
             {t("signInInstead")}
           </Link>
         </p>
-        <p className="text-center text-xs leading-5 text-neutral-500">{t("vendorRegistrationNote")}</p>
+        <p className="text-center text-xs leading-5 text-neutral-500">
+          {t("vendorRegistrationNote")}{" "}
+          <Link href="/auth/vendor-register" className="font-bold text-leaf-700">
+            {t("vendorRegisterLink")}
+          </Link>
+        </p>
       </form>
     </div>
   );

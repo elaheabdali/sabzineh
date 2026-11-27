@@ -49,6 +49,13 @@ export interface UserStore {
   }): Promise<UserRecord>;
   listAll(): Promise<UserRecord[]>;
   getVendorIdByUserId(userId: string): Promise<string | null>;
+  /**
+   * Links a vendor profile to a user (vendor registration, Week 5).
+   * Prisma derives vendorId from the VendorProfile relation on read,
+   * so its implementation is a no-op; the memory store updates the
+   * stored record so later logins resolve the vendorId.
+   */
+  setVendorId(userId: string, vendorId: string): Promise<void>;
 }
 
 export interface SessionStore {
@@ -140,6 +147,12 @@ export class PrismaUserStore implements UserStore {
       select: { id: true },
     });
     return profile?.id ?? null;
+  }
+
+  async setVendorId(userId: string, vendorId: string): Promise<void> {
+    // No-op: vendorId is derived from the VendorProfile relation.
+    void userId;
+    void vendorId;
   }
 }
 
@@ -253,6 +266,12 @@ export class MemoryUserStore implements UserStore {
   async getVendorIdByUserId(userId: string): Promise<string | null> {
     await this.ensureSeeded();
     return this.users.get(userId)?.vendorId ?? null;
+  }
+
+  async setVendorId(userId: string, vendorId: string): Promise<void> {
+    await this.ensureSeeded();
+    const user = this.users.get(userId);
+    if (user) user.vendorId = vendorId;
   }
 }
 

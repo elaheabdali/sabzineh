@@ -17,7 +17,7 @@ export function ProductCard({ product, locale }: ProductCardProps) {
       <Link href={`/product/${product.slug}`} aria-label={product.title}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={placeholderImage(product.title)}
+          src={product.images?.[0] ?? placeholderImage(product.title)}
           alt={product.title}
           width={800}
           height={800}

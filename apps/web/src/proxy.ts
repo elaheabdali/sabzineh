@@ -8,15 +8,21 @@ import { SESSION_COOKIE } from "./lib/auth/cookies";
  * `/` → `/fa` redirects and `fa` | `en` prefix validation.
  * API routes and the payment callback bypass the locale middleware.
  *
- * Auth (Week 3): protected route groups (/account, /vendor, /admin)
- * redirect guests to login when the session cookie is absent. This
- * is a fast-path only — full validation stays in the page guards
- * (lib/auth/guards), which resolve the cookie server-side and fail
- * closed on an invalid/expired session.
+ * Auth (Week 3): protected route groups (/account, /vendor panel,
+ * /admin) redirect guests to login when the session cookie is
+ * absent. This is a fast-path only — full validation stays in the
+ * page guards (lib/auth/guards), which resolve the cookie
+ * server-side and fail closed on an invalid/expired session.
+ *
+ * Only the vendor PANEL paths are protected: the public shop page
+ * (/vendor/<shop-slug>, Week 5) is open to guests, so it is not in
+ * this pattern. Panel slugs can never collide with a shop slug —
+ * shop slugs always carry a random suffix.
  */
 const intlMiddleware = createMiddleware(routing);
 
-const PROTECTED = /^\/(fa|en)\/(account|vendor|admin)(\/|$)/;
+const PROTECTED =
+  /^\/(fa|en)\/(account|admin)(\/|$)|^\/(fa|en)\/vendor\/(dashboard|products|settings)(\/|$)/;
 
 export function proxy(request: NextRequest) {
   const response = intlMiddleware(request);

@@ -78,7 +78,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       <div className="grid gap-8 md:grid-cols-2">
-        <ProductGallery title={product.title} />
+        <ProductGallery title={product.title} images={product.images} />
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-black leading-snug text-ink-900">{product.title}</h1>
           {vendor ? (

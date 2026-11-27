@@ -22,6 +22,13 @@ import {
 import { applyFilter, PAGE_SIZE, paginate } from "./filter";
 import { buildFacetWhere, buildProductOrderBy, buildProductWhere } from "./prisma";
 import { getSeedReviews } from "./reviews";
+import { getProductImages } from "@/data/product-images";
+
+/** Uploaded images ride on the DTO; absent = placeholder gallery. */
+function withImages(item: ProductDTO): ProductDTO {
+  const images = getProductImages(item.id).map((i) => i.url);
+  return images.length > 0 ? { ...item, images } : item;
+}
 
 /**
  * Catalog repository — one interface, two adapters.
@@ -104,7 +111,9 @@ function seedSearch(items: ProductDTO[], q: string): ProductDTO[] {
 
 export class SeedCatalogRepository implements CatalogRepository {
   private scoped(params: FilterParams, scope?: { categoryIds?: string[] }): ProductDTO[] {
-    let items = seedProducts;
+    // Public listing: only PUBLISHED products. Vendor drafts live in
+    // the same array (Week 5) and must never leak into the storefront.
+    let items = seedProducts.filter((p) => p.status === "PUBLISHED");
     const ids = scope?.categoryIds;
     if (ids) {
       const set = new Set(ids);
@@ -136,7 +145,7 @@ export class SeedCatalogRepository implements CatalogRepository {
   async listProducts(params: FilterParams, scope?: { categoryIds?: string[] }): Promise<CatalogListResult> {
     const filtered = this.apply(this.scoped(params, scope), params);
     const page = paginate(filtered, params.page, PAGE_SIZE);
-    return { items: page.items, total: page.total, page: page.page, pageSize: page.pageSize, totalPages: page.totalPages };
+    return { items: page.items.map(withImages), total: page.total, page: page.page, pageSize: page.pageSize, totalPages: page.totalPages };
   }
 
   async getFacets(params: FilterParams, scope?: { categoryIds?: string[] }): Promise<FacetCounts> {
@@ -164,11 +173,17 @@ export class SeedCatalogRepository implements CatalogRepository {
   }
 
   async getProductBySlug(slug: string): Promise<ProductDTO | null> {
-    return getSeedProductBySlug(slug) ?? null;
+    const product = getSeedProductBySlug(slug);
+    // Drafts are not public: the product page 404s for them.
+    if (!product || product.status !== "PUBLISHED") return null;
+    return withImages(product);
   }
 
   async getProductById(id: string): Promise<ProductDTO | null> {
-    return seedProducts.find((p) => p.id === id) ?? null;
+    // Internal lookup (checkout re-validates price/stock): status is
+    // deliberately NOT filtered here.
+    const product = seedProducts.find((p) => p.id === id);
+    return product ? withImages(product) : null;
   }
 
   async adjustStock(productId: string, delta: number): Promise<number> {
@@ -191,7 +206,7 @@ export class SeedCatalogRepository implements CatalogRepository {
   }
 
   async getAllProductSlugs(): Promise<string[]> {
-    return seedProducts.map((p) => p.slug);
+    return seedProducts.filter((p) => p.status === "PUBLISHED").map((p) => p.slug);
   }
 
   async getCategoryTree(): Promise<CategoryNode[]> {
@@ -212,8 +227,9 @@ export class SeedCatalogRepository implements CatalogRepository {
 
   async getRelatedProducts(product: ProductDTO, limit = 4): Promise<ProductDTO[]> {
     return seedProducts
-      .filter((p) => p.categoryId === product.categoryId && p.id !== product.id)
-      .slice(0, limit);
+      .filter((p) => p.categoryId === product.categoryId && p.id !== product.id && p.status === "PUBLISHED")
+      .slice(0, limit)
+      .map(withImages);
   }
 
   async getReviews(productId: string): Promise<ReviewDTO[]> {
@@ -246,6 +262,16 @@ function toProductDTO(p: PrismaProduct): ProductDTO {
   };
 }
 
+type PrismaProductWithImages = PrismaProduct & { images: { url: string }[] };
+
+function toProductDTOWithImages(p: PrismaProductWithImages): ProductDTO {
+  const dto = toProductDTO(p);
+  const images = p.images.map((i) => i.url);
+  return images.length > 0 ? { ...dto, images } : dto;
+}
+
+const productImagesInclude = { images: { orderBy: { sortOrder: "asc" } } } as const;
+
 function toVendorDTO(v: {
   id: string;
   shopName: string;
@@ -277,6 +303,7 @@ export class PrismaCatalogRepository implements CatalogRepository {
         orderBy: buildProductOrderBy(params.sort),
         skip: (page - 1) * PAGE_SIZE,
         take: PAGE_SIZE,
+        include: productImagesInclude,
       }),
       this.prisma.product.count({ where }),
     ]);
@@ -290,8 +317,9 @@ export class PrismaCatalogRepository implements CatalogRepository {
             orderBy: buildProductOrderBy(params.sort),
             skip: (safePage - 1) * PAGE_SIZE,
             take: PAGE_SIZE,
+            include: productImagesInclude,
           });
-    return { items: safeItems.map(toProductDTO), total, page: safePage, pageSize: PAGE_SIZE, totalPages };
+    return { items: safeItems.map(toProductDTOWithImages), total, page: safePage, pageSize: PAGE_SIZE, totalPages };
   }
 
   async getFacets(params: FilterParams, scope?: { categoryIds?: string[] }): Promise<FacetCounts> {
@@ -326,13 +354,21 @@ export class PrismaCatalogRepository implements CatalogRepository {
   }
 
   async getProductBySlug(slug: string): Promise<ProductDTO | null> {
-    const product = await this.prisma.product.findUnique({ where: { slug } });
-    return product ? toProductDTO(product) : null;
+    // Public page: drafts 404 here just like in the seed adapter.
+    const product = await this.prisma.product.findFirst({
+      where: { slug, status: "PUBLISHED" },
+      include: productImagesInclude,
+    });
+    return product ? toProductDTOWithImages(product) : null;
   }
 
   async getProductById(id: string): Promise<ProductDTO | null> {
-    const product = await this.prisma.product.findUnique({ where: { id } });
-    return product ? toProductDTO(product) : null;
+    // Internal lookup (checkout): status is deliberately NOT filtered.
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: productImagesInclude,
+    });
+    return product ? toProductDTOWithImages(product) : null;
   }
 
   async adjustStock(productId: string, delta: number): Promise<number> {
@@ -444,8 +480,9 @@ export class PrismaCatalogRepository implements CatalogRepository {
       where: { categoryId: product.categoryId, status: "PUBLISHED", id: { not: product.id } },
       orderBy: [{ rating: "desc" }],
       take: limit,
+      include: productImagesInclude,
     });
-    return items.map(toProductDTO);
+    return items.map(toProductDTOWithImages);
   }
 
   async getReviews(productId: string): Promise<ReviewDTO[]> {

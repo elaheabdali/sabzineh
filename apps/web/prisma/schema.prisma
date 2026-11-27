@@ -159,6 +159,12 @@ model VendorProfile {
   bio       String?
   status    VendorStatus @default(PENDING)
   rating    Float        @default(0)
+  // Week 5: profile settings. Payout fields are stored only — the
+  // public shop page never renders them.
+  phone              String?
+  logoUrl            String?
+  payoutIban         String?
+  payoutAccountHolder String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
