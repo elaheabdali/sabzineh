@@ -20,7 +20,7 @@ export default async function OrdersPage({ params }: { params: Promise<{ locale:
       {orders.length === 0 ? (
         <div className="flex flex-col items-start gap-2">
           <p className="text-sm text-neutral-600">{t("empty")}</p>
-          <p className="text-sm text-neutral-500">{t("emptyHint")}</p>
+          <p className="text-sm text-neutral-600">{t("emptyHint")}</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -30,7 +30,7 @@ export default async function OrdersPage({ params }: { params: Promise<{ locale:
                 <span className="text-sm font-bold text-ink-900" data-testid="order-id">
                   {t("order")} #{order.id.slice(0, 8)}
                 </span>
-                <span className="text-xs text-neutral-500">{formatJalali(order.createdAt, locale)}</span>
+                <span className="text-xs text-neutral-600">{formatJalali(order.createdAt, locale)}</span>
                 <span className="text-sm font-bold text-ink-900" data-testid="order-total">
                   {formatPrice(order.total, locale)}
                 </span>

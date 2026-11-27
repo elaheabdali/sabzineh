@@ -251,7 +251,7 @@ export function ProductForm({ locale, categories, initial }: ProductFormProps) {
             >
               {t("generateDescription")}
             </Button>
-            <p className="mt-1 text-xs text-neutral-500">{t("generateDescriptionHint")}</p>
+            <p className="mt-1 text-xs text-neutral-600">{t("generateDescriptionHint")}</p>
           </div>
           <label className="flex flex-col gap-1 text-sm font-medium text-ink-900">
             {t("category")}
@@ -313,7 +313,7 @@ export function ProductForm({ locale, categories, initial }: ProductFormProps) {
             maxSizeMB={1}
             label={t("images")}
           />
-          <p className="text-xs text-neutral-500">{t("imagesHint")}</p>
+          <p className="text-xs text-neutral-600">{t("imagesHint")}</p>
           <div className="flex gap-2">
             <Button type="button" variant="secondary" data-testid="back-to-step-1" onClick={() => setStep(1)}>
               {t("prevStep")}
@@ -380,29 +380,29 @@ export function ProductForm({ locale, categories, initial }: ProductFormProps) {
           <h2 className="text-lg font-bold text-ink-900">{t("reviewTitle")}</h2>
           <dl className="grid gap-2 rounded-2xl border border-cream-200 bg-white p-4 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-neutral-500">{t("title")}</dt>
+              <dt className="text-neutral-600">{t("title")}</dt>
               <dd className="font-bold text-ink-900">{title}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-neutral-500">{t("category")}</dt>
+              <dt className="text-neutral-600">{t("category")}</dt>
               <dd className="font-bold text-ink-900">{categoryLabel}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-neutral-500">{t("price")}</dt>
+              <dt className="text-neutral-600">{t("price")}</dt>
               <dd className="font-bold text-ink-900">{formatPrice(Number(price) || 0, locale)}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-neutral-500">{t("stock")}</dt>
+              <dt className="text-neutral-600">{t("stock")}</dt>
               <dd className="font-bold text-ink-900">{stock}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-neutral-500">{t("images")}</dt>
+              <dt className="text-neutral-600">{t("images")}</dt>
               <dd className="font-bold text-ink-900">
                 {files.filter((f) => !f.error).length}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-neutral-500">{t("tags")}</dt>
+              <dt className="text-neutral-600">{t("tags")}</dt>
               <dd className="font-bold text-ink-900">{tagsText || "—"}</dd>
             </div>
           </dl>

@@ -77,19 +77,19 @@ export default async function VendorDashboardPage({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-cream-200 bg-white p-4">
-          <p className="text-xs text-neutral-500">{t("revenue")}</p>
+          <p className="text-xs text-neutral-600">{t("revenue")}</p>
           <p className="mt-1 text-xl font-black text-ink-900" data-testid="vendor-stat-revenue">
             {formatPrice(data.revenue, locale)}
           </p>
         </div>
         <div className="rounded-2xl border border-cream-200 bg-white p-4">
-          <p className="text-xs text-neutral-500">{t("orderCount")}</p>
+          <p className="text-xs text-neutral-600">{t("orderCount")}</p>
           <p className="mt-1 text-xl font-black text-ink-900" data-testid="vendor-stat-orders">
             {data.orderCount.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
           </p>
         </div>
         <div className="rounded-2xl border border-cream-200 bg-white p-4">
-          <p className="text-xs text-neutral-500">{t("productCount")}</p>
+          <p className="text-xs text-neutral-600">{t("productCount")}</p>
           <p className="mt-1 text-xl font-black text-ink-900" data-testid="vendor-stat-products">
             {data.productCount.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
           </p>
@@ -109,7 +109,7 @@ export default async function VendorDashboardPage({
                 className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-cream-200 bg-white p-4 text-sm"
               >
                 <span className="font-bold text-ink-900">{product.title}</span>
-                <span className="text-neutral-500">
+                <span className="text-neutral-600">
                   {product.qty.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")} ×{" "}
                   {formatPrice(product.gross, locale)}
                 </span>
@@ -138,9 +138,9 @@ export default async function VendorDashboardPage({
                     <span className="font-bold text-ink-900">
                       {row.title} × {row.qty}
                     </span>
-                    <span className="text-xs text-neutral-500">{formatJalali(row.createdAt, locale)}</span>
+                    <span className="text-xs text-neutral-600">{formatJalali(row.createdAt, locale)}</span>
                     <span className="font-bold">{formatPrice(row.gross, locale)}</span>
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-xs text-neutral-600">
                       {t("commission")}: {formatPrice(Math.round(row.gross * row.commissionRate), locale)}
                     </span>
                     <span

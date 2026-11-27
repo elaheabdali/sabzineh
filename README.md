@@ -7,26 +7,21 @@ RBAC guards.
 
 This is a portfolio project built to the standard of a real product:
 server-side pricing (the client never decides the final total),
-a swappable payment port (Mock today, Zarinpal sandbox next),
-subscription billing on both sides (buyer box + vendor plan),
-and CI running typecheck, lint, Vitest and build on every push.
+a swappable payment port (Mock by default, real Zarinpal sandbox
+behind one env var), subscription billing on both sides (buyer box
++ vendor plan), and CI running typecheck, lint, Vitest, build and
+Playwright E2E on every push.
 
-> **Week 4 status:** live on Vercel — https://sabzineh-web.vercel.app
-> (project `sabzineh-web`, deployment for `38d3458` green, `/fa`
-> returns 200). Real Zarinpal sandbox `PaymentPort` is code-complete
-> (request authority → StartPay → callback → server-side verify,
-> following the ela-coffee pattern verified live twice there),
-> with 15 mocked-HTTP unit tests and a gated sandbox E2E spec
-> (`E2E_ZARINPAL=1`, skipped in CI). The sandbox authority leg was
-> verified live from this machine (real `S000…` authority from the
-> test merchant id) and the gated sandbox E2E passes 6/6 (Chromium
-> + Firefox); the full browser click-through still needs a
-> human on the deployed site. Migrations 0001–0003 were validated
-> offline (24 tables, 17 enums, 186 columns, 25 indexes — all match
-> the schema) and `migration_lock.toml` was added, which
-> `prisma migrate deploy` requires. No live database yet — the app
-> still runs on the seed adapter; the real Prisma adapter switches
-> on automatically once `DATABASE_URL` is set (see below).
+> **Final state (Week 8, 2026-11-28):** all 8 weeks complete.
+> 222 Vitest tests + Playwright E2E on Chromium and Firefox (see
+> "Week 8" below for the final count), axe a11y suite green,
+> SEO (sitemap / robots / JSON-LD / hreflang) in place, README +
+> demo script complete. Live at https://sabzineh-web.vercel.app
+> (project `sabzineh-web`) — but see "Production status": the live
+> site still runs on the seed adapter because migrations 0001–0005
+> never ran against Neon; category/product pages fail there until
+> `prisma migrate deploy` + seed runs (or `DATABASE_URL` is removed
+> from Vercel env so the app falls back to seed data).
 
 ## Stack
 
@@ -67,6 +62,23 @@ pnpm --filter web db:seed
 Until then the storefront renders from `apps/web/src/data/seed.json`
 (the same data the seed script inserts), so the app is fully
 demonstrable without a database.
+
+## Environment variables
+
+| Variable | Required | Value |
+|---|---|---|
+| `DATABASE_URL` | For the real DB | Neon pooled connection string (`…-pooler…?sslmode=require`). Unset = seed/memory adapters. |
+| `PAYMENT_PROVIDER` | No (default `mock`) | `mock` or `zarinpal` |
+| `ZARINPAL_MERCHANT_ID` | For Zarinpal | Sandbox test UUID (`00000000-0000-0000-0000-000000000000` works). Real id only in Vercel, never in git. |
+| `ZARINPAL_SANDBOX` | No (default `true`) | `true` = sandbox, `false` = live Zarinpal |
+| `NEXT_PUBLIC_APP_URL` | No (see note) | Production URL, e.g. `https://sabzineh-web.vercel.app`. Canonicals, Open Graph and the sitemap derive from it; the fallback is the live project URL. Set it in Vercel so local builds don't bake in the wrong host. |
+| `AI_API_KEY` / `AI_MODEL` | No | Unused: the Week 7 AI features are deterministic heuristics with no external API. Left in `.env.example` for a future real provider. |
+
+Secrets live only in Vercel env vars and local `apps/web/.env`
+— never in git, never in chat. (A real `DATABASE_URL` was once
+committed by mistake in an old commit and later deleted; it is
+still in git history — rotate the Neon password before putting
+any real data on that database.)
 
 ### Catalog data source: seed adapter vs Prisma adapter
 
@@ -335,3 +347,70 @@ Week 3 — auth + roles + cart + checkout.
 Week 4 — payments (Zarinpal sandbox), wallet, discounts; live MVP.
 Week 5 — vendor panel + uploader. Week 6 — admin panel + subscriptions.
 Week 7 — AI (3 features), SSE, notifications. Week 8 — polish, SEO, a11y, README.
+
+## Week 8 done-criteria (final)
+
+- [x] Definition of Done audit: `docs/done-checklist.md` — every item
+  from the plan (p.14) verified by running the check, not by reading
+  code; 10 of 12 verified, 2 honestly UNVERIFIED (Lighthouse score —
+  no Lighthouse-capable browser in the build VM; live-site console
+  errors — no Vercel access from here)
+- [x] SEO: `src/app/robots.ts` + `src/app/sitemap.ts` (368 URLs:
+  2 locales × home/search/50 categories/120 products/12 shops),
+  `metadataBase` + canonical + hreflang (fa/en/x-default) + Open
+  Graph in the locale layout and on category/product pages, JSON-LD
+  (`Organization` + `WebSite` home, `Product` + `BreadcrumbList`
+  product, `BreadcrumbList` category) via a single `JsonLd`
+  component — the only `dangerouslySetInnerHTML` in the app, static
+  server data only; `public/favicon.svg` added
+- [x] Accessibility: new axe suite `tests/e2e/a11y.spec.ts`
+  (`@axe-core/playwright`) over home, category, product, cart,
+  checkout, login, vendor + admin dashboards, plus a keyboard-only
+  checkout check — 9/9 green on Chromium and Firefox. The suite
+  found 20 real violations and they were fixed: `text-neutral-500`
+  on the cream background was 4.42:1 (below WCAG 2.2 AA 4.5:1) →
+  `text-neutral-600` (≈7:1, 73 uses); `aria-pressed` on filter
+  links is invalid on the `link` role → `aria-current` on the
+  active filter. Before: 20 violations / 3 pages; after: 0.
+- [x] Performance (local prod build, Chromium, median of 3): home
+  TTFB 41 ms / load 208 ms, category 114 ms / 225 ms, product
+  97 ms / 225 ms; document transfer ≈ 18–20 KB compressed;
+  `.next/static` 1.2 MB, largest JS chunk 224 KB. No external hosts
+  in built HTML (verified: only the site's own hreflang URLs) —
+  no Google Fonts, no CDN, no third-party scripts (CSP already
+  forbids them). LCP/Lighthouse not measurable in this VM (see
+  `docs/architecture.md` → Performance)
+- [x] Final sweep: typecheck + lint green, Vitest 222 tests green,
+  Playwright E2E 94 passed / 6 skipped (gated Zarinpal sandbox
+  spec) / 0 failed on Chromium + Firefox (47 per browser)
+- [x] Docs: README rewritten for the final state (env-var table,
+  Week 8 section, known limitations), `docs/architecture.md` +
+  `docs/demo-accounts.md` updated, `docs/demo-script.md` added
+  (10-minute interview walkthrough), `docs/done-checklist.md`
+  added
+- [x] Housekeeping: no TODOs, no `console.log`, no dead code found
+  (3 candidates checked — all in use), no new secrets in git
+  (only `.env.example` tracked, placeholders only); the old leaked
+  `DATABASE_URL` in history was NOT rewritten — rotate the Neon
+  password before any real data goes on that database
+
+## Known limitations (Week 8, honest list)
+
+- **Production DB**: migrations 0001–0005 never ran against Neon,
+  so the live site's category/product pages fail while the homepage
+  renders (see "Production status" below). Fix: `prisma migrate
+  deploy` + `db:seed` against Neon, or remove `DATABASE_URL`
+  from Vercel env to fall back to seed data.
+- **Zarinpal sandbox click-through**: the full browser payment on
+  the live site still needs a human with the sandbox test card
+  (Week 4 verified the authority leg + gated E2E; the sandbox
+  captcha fields are inert in cloud browsers).
+- **SSE on serverless**: each Vercel function instance has its own
+  event bus — SSE is a fast path, polling fallback covers drops.
+- **AI features are heuristics**: no external AI API by design
+  (see `docs/architecture.md`).
+- **Images**: product photos are deterministic SVG data-URI
+  placeholders; vendor uploads ride as data: URLs (max 4 × 1 MB).
+  No image CDN, no `next/image` optimisation pass — a real photo
+  pipeline is future work.
+- **Lighthouse**: no score claimed from this VM (see above).

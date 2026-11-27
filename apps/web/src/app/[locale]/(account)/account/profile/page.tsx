@@ -22,15 +22,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
       <section className="rounded-2xl border border-cream-200 bg-white p-6">
         <dl className="flex flex-col gap-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-neutral-500">{tAuth("name")}</dt>
+            <dt className="text-neutral-600">{tAuth("name")}</dt>
             <dd className="font-bold text-ink-900" data-testid="profile-name">{session.name}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-neutral-500">{tAuth("email")}</dt>
+            <dt className="text-neutral-600">{tAuth("email")}</dt>
             <dd className="font-bold text-ink-900" data-testid="profile-email">{session.email}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-neutral-500">{t("walletBalance")}</dt>
+            <dt className="text-neutral-600">{t("walletBalance")}</dt>
             <dd className="font-bold text-ink-900" data-testid="profile-wallet">
               {formatPrice(walletBalance, locale)}
             </dd>

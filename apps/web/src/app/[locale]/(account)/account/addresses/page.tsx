@@ -23,7 +23,7 @@ export default async function AddressesPage({ params }: { params: Promise<{ loca
           {addresses.map((a) => (
             <li key={a.id} className="rounded-2xl border border-cream-200 bg-white p-4" data-testid="address-row">
               <p className="text-sm font-bold text-ink-900">{a.title} — {a.city}</p>
-              <p className="text-xs text-neutral-500">{a.text} · {a.postalCode} · {a.phone}</p>
+              <p className="text-xs text-neutral-600">{a.text} · {a.postalCode} · {a.phone}</p>
             </li>
           ))}
         </ul>

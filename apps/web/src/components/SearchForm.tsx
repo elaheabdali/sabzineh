@@ -69,7 +69,7 @@ export function SmartSearchForm() {
       <label htmlFor="smart-search" className="text-sm font-bold text-ink-900">
         {t("smartSearch")}
       </label>
-      <p className="text-xs leading-5 text-neutral-500">{t("smartSearchHint")}</p>
+      <p className="text-xs leading-5 text-neutral-600">{t("smartSearchHint")}</p>
       <div className="flex gap-2">
         <input
           id="smart-search"

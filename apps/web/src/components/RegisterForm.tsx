@@ -90,7 +90,7 @@ export function RegisterForm({ next }: { next: string }) {
             {t("signInInstead")}
           </Link>
         </p>
-        <p className="text-center text-xs leading-5 text-neutral-500">
+        <p className="text-center text-xs leading-5 text-neutral-600">
           {t("vendorRegistrationNote")}{" "}
           <Link href="/auth/vendor-register" className="font-bold text-leaf-700">
             {t("vendorRegisterLink")}

@@ -60,7 +60,7 @@ export default async function NotificationsPage({
                 <span className="text-sm font-bold text-ink-900">
                   {t(TYPE_LABEL[item.type] ?? "title")}
                 </span>
-                <span className="text-xs text-neutral-500">{formatJalali(item.createdAt, locale)}</span>
+                <span className="text-xs text-neutral-600">{formatJalali(item.createdAt, locale)}</span>
               </div>
               <p className="mt-2 text-sm leading-7 text-neutral-600">
                 {typeof item.payload.orderId === "string" ? (

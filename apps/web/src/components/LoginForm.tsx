@@ -100,7 +100,7 @@ export function LoginForm({ next }: { next: string }) {
 
       <div className="rounded-2xl border border-cream-200 bg-white p-6">
         <h2 className="text-sm font-bold text-ink-900">{t("demoAccounts")}</h2>
-        <p className="mt-1 text-xs leading-5 text-neutral-500">{t("demoHint")}</p>
+        <p className="mt-1 text-xs leading-5 text-neutral-600">{t("demoHint")}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {DEMO_ACCOUNTS.map((demo) => (
             <Button

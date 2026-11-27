@@ -31,7 +31,7 @@ export function ProductCard({ product, locale }: ProductCardProps) {
             {product.title}
           </Link>
         </h3>
-        {vendor ? <p className="text-xs text-neutral-500">{vendor.shopName}</p> : null}
+        {vendor ? <p className="text-xs text-neutral-600">{vendor.shopName}</p> : null}
         <div className="mt-auto flex items-end justify-between gap-2">
           <p className="text-base font-black text-leaf-700">
             {formatPrice(product.price, locale)}
@@ -41,7 +41,7 @@ export function ProductCard({ product, locale }: ProductCardProps) {
               </span>
             ) : null}
           </p>
-          <span className="text-xs text-neutral-500" aria-label={`Rating ${product.rating} of 5`}>
+          <span className="text-xs text-neutral-600" aria-label={`Rating ${product.rating} of 5`}>
             ★ {product.rating.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
           </span>
         </div>

@@ -30,8 +30,8 @@ Anyone can request a vendor account at `/auth/vendor-register`
 (name, email, Iranian mobile, password, shop name, city). The request
 creates a VENDOR user and a PENDING vendor profile: the new vendor
 can log in and save product drafts, but cannot publish until an admin
-approves (approval UI lands in Week 6). The vendor dashboard shows
-the request as "under review".
+approves (`/admin/vendors` — approve/reject with reason, audit-logged).
+The vendor dashboard shows the request as "under review".
 
 Vendor panel (`/vendor/dashboard`, `/vendor/products`,
 `/vendor/products/new`, `/vendor/settings`) is scoped to the signed-in

@@ -116,7 +116,7 @@ export default async function AdminCategoriesPage({
               <span className="font-bold text-ink-900">
                 {locale === "fa" ? node.nameFa : node.nameEn}
               </span>
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-neutral-600">
                 {node.slug} · {node.productCount}
               </span>
               <input

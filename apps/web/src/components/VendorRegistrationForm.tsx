@@ -78,7 +78,7 @@ export function VendorRegistrationForm({ locale }: { locale: "fa" | "en" }) {
             rows={3}
             className="rounded-xl border border-cream-200 bg-white px-4 py-3 text-sm outline-none focus:border-leaf-600"
           />
-          <span className="text-xs font-normal text-neutral-500">{t("documentsNoteHint")}</span>
+          <span className="text-xs font-normal text-neutral-600">{t("documentsNoteHint")}</span>
         </label>
         {state.error ? (
           <p role="alert" className="text-sm font-bold text-red-700">

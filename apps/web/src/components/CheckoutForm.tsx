@@ -202,7 +202,7 @@ export function CheckoutForm({
                     />
                     <span>
                       <span className="block text-sm font-bold text-ink-900">{a.title} — {a.city}</span>
-                      <span className="block text-xs text-neutral-500">{a.text} · {a.postalCode}</span>
+                      <span className="block text-xs text-neutral-600">{a.text} · {a.postalCode}</span>
                     </span>
                   </label>
                 </li>
@@ -274,7 +274,7 @@ export function CheckoutForm({
             />
             <span>
               <span className="block text-sm font-bold text-ink-900">{t("payWithWallet")}</span>
-              <span className="block text-xs text-neutral-500">
+              <span className="block text-xs text-neutral-600">
                 {t("walletBalance")}: {formatPrice(walletBalance, locale)}
               </span>
             </span>

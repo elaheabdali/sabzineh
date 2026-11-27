@@ -38,7 +38,7 @@ export default async function AdminDashboardPage({
           ] as const
         ).map(([key, value]) => (
           <div key={key} className="rounded-2xl border border-cream-200 bg-white p-4">
-            <dt className="text-xs text-neutral-500">{t(key)}</dt>
+            <dt className="text-xs text-neutral-600">{t(key)}</dt>
             <dd className="text-xl font-black text-ink-900" data-testid={`admin-stat-${key}`}>
               {value}
             </dd>

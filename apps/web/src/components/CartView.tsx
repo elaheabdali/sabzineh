@@ -33,7 +33,7 @@ export function CartView({ locale }: { locale: Locale }) {
       <div className="flex flex-col items-start gap-4 pt-8" data-testid="cart-page">
         <h1 className="text-2xl font-black text-ink-900">{t("title")}</h1>
         <p className="text-sm text-neutral-600">{t("empty")}</p>
-        <p className="text-sm text-neutral-500">{t("emptyHint")}</p>
+        <p className="text-sm text-neutral-600">{t("emptyHint")}</p>
         <Link
           href="/"
           className="rounded-xl bg-leaf-700 px-4 py-2 text-sm font-bold text-white"
@@ -77,7 +77,7 @@ export function CartView({ locale }: { locale: Locale }) {
                   <p className="truncate text-sm font-bold text-ink-900" data-testid="cart-line-title">
                     {product.title}
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-neutral-600">
                     {formatPrice(product.price, locale)} · {t("quantity")}: {qty}
                   </p>
                 </div>

@@ -32,25 +32,25 @@ export default async function AdminUserDetailPage({
       <h1 className="text-2xl font-black text-ink-900">{t("userDetail")}</h1>
       <dl className="flex flex-col gap-2 rounded-2xl border border-cream-200 bg-white p-6 text-sm">
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("name")}</dt>
+          <dt className="text-neutral-600">{t("name")}</dt>
           <dd className="font-bold text-ink-900">{detail.name}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("email")}</dt>
+          <dt className="text-neutral-600">{t("email")}</dt>
           <dd className="font-bold text-ink-900">{detail.email}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("role")}</dt>
+          <dt className="text-neutral-600">{t("role")}</dt>
           <dd className="font-bold text-ink-900">{detail.role}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("status")}</dt>
+          <dt className="text-neutral-600">{t("status")}</dt>
           <dd className="font-bold text-ink-900" data-testid="admin-user-status">
             {detail.status}
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("ordersCount")}</dt>
+          <dt className="text-neutral-600">{t("ordersCount")}</dt>
           <dd className="font-bold text-ink-900">{detail.orderCount}</dd>
         </div>
       </dl>

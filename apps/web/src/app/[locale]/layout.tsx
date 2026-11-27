@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { AssistantChat } from "@/components/AssistantChat";
 import { buildCategoryTree } from "@/data/seed";
 import { getSession } from "@/lib/auth/guards";
+import { localeAlternates, siteUrl } from "@/lib/seo";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -21,12 +22,25 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const isFa = locale !== "en";
   return {
-    title: locale === "en" ? "Sabzineh — fresh from the farm" : "سبزینه — تازه از مزرعه",
-    description:
-      locale === "en"
-        ? "Multi-vendor marketplace for organic and local food, with a weekly subscription box."
-        : "مارکت‌پلیس چندفروشنده محصولات ارگانیک و غذایی محلی، با باکس اشتراک هفتگی.",
+    metadataBase: new URL(siteUrl()),
+    title: isFa ? "سبزینه — تازه از مزرعه" : "Sabzineh — fresh from the farm",
+    description: isFa
+      ? "مارکت‌پلیس چندفروشنده محصولات ارگانیک و غذایی محلی، با باکس اشتراک هفتگی."
+      : "Multi-vendor marketplace for organic and local food, with a weekly subscription box.",
+    alternates: localeAlternates("/"),
+    openGraph: {
+      type: "website",
+      locale: isFa ? "fa_IR" : "en_US",
+      url: `${siteUrl()}/${locale}`,
+      siteName: isFa ? "سبزینه" : "Sabzineh",
+      title: isFa ? "سبزینه — تازه از مزرعه" : "Sabzineh — fresh from the farm",
+      description: isFa
+        ? "مارکت‌پلیس چندفروشنده محصولات ارگانیک و غذایی محلی، با باکس اشتراک هفتگی."
+        : "Multi-vendor marketplace for organic and local food, with a weekly subscription box.",
+    },
+    icons: { icon: "/favicon.svg" },
   };
 }
 

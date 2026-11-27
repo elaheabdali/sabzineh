@@ -33,19 +33,19 @@ export default async function AdminOrderDetailPage({
       <h1 className="text-2xl font-black text-ink-900">{t("orderDetail")}</h1>
       <dl className="flex flex-col gap-2 rounded-2xl border border-cream-200 bg-white p-6 text-sm">
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("customer")}</dt>
+          <dt className="text-neutral-600">{t("customer")}</dt>
           <dd className="font-bold text-ink-900">
             {detail.userName ?? "—"} ({detail.userEmail ?? "—"})
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("status")}</dt>
+          <dt className="text-neutral-600">{t("status")}</dt>
           <dd className="font-bold text-ink-900" data-testid="admin-order-status">
             {order.status}
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("total")}</dt>
+          <dt className="text-neutral-600">{t("total")}</dt>
           <dd className="font-bold text-ink-900">{formatPrice(order.total, locale)}</dd>
         </div>
       </dl>
@@ -59,7 +59,7 @@ export default async function AdminOrderDetailPage({
             <span className="text-neutral-600">
               ×{item.qty} · {formatPrice(item.unitPrice, locale)}
             </span>
-            <span className="text-xs text-neutral-500">{item.vendorId}</span>
+            <span className="text-xs text-neutral-600">{item.vendorId}</span>
           </li>
         ))}
       </ul>

@@ -73,7 +73,7 @@ export function DataTable<T>({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + (onSelectionChange ? 1 : 0)} className="px-3 py-8 text-center text-neutral-500">
+              <td colSpan={columns.length + (onSelectionChange ? 1 : 0)} className="px-3 py-8 text-center text-neutral-600">
                 {emptyMessage}
               </td>
             </tr>
@@ -108,7 +108,7 @@ export function DataTable<T>({
         </tbody>
       </table>
       <div className="flex items-center justify-between border-t border-cream-200 px-3 py-3">
-        <p className="text-xs text-neutral-500" aria-live="polite">
+        <p className="text-xs text-neutral-600" aria-live="polite">
           Page {page} of {pageCount} — {total} rows
         </p>
         <div className="flex gap-2">

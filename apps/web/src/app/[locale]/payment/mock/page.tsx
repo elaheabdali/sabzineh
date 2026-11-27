@@ -45,11 +45,11 @@ export default async function MockPaymentPage({
       <p className="rounded-xl bg-cream-50 p-4 text-sm leading-6 text-neutral-600">{t("mockHint")}</p>
       <dl className="flex flex-col gap-2 rounded-2xl border border-cream-200 bg-white p-6 text-sm">
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("order")}</dt>
+          <dt className="text-neutral-600">{t("order")}</dt>
           <dd className="font-bold text-ink-900" data-testid="mock-order-id">#{order.id.slice(0, 8)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-neutral-500">{t("amount")}</dt>
+          <dt className="text-neutral-600">{t("amount")}</dt>
           <dd className="font-black text-ink-900" data-testid="mock-amount">
             {formatPrice(payment.amount, locale)}
           </dd>

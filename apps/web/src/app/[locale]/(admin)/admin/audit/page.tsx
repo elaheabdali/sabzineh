@@ -35,8 +35,8 @@ export default async function AdminAuditPage({
               <span className="text-neutral-600">
                 {log.entity} · {log.entityId.slice(0, 8)}
               </span>
-              <span className="text-xs text-neutral-500">{log.actorId.slice(0, 8)}</span>
-              <span className="text-xs text-neutral-500">{formatJalali(log.createdAt, locale)}</span>
+              <span className="text-xs text-neutral-600">{log.actorId.slice(0, 8)}</span>
+              <span className="text-xs text-neutral-600">{formatJalali(log.createdAt, locale)}</span>
             </li>
           ))}
         </ul>

@@ -32,7 +32,7 @@ export function Input({ label, error, hint, id, className, ...rest }: InputProps
           {error}
         </p>
       ) : hint ? (
-        <p id={`${inputId}-hint`} className="text-xs text-neutral-500">
+        <p id={`${inputId}-hint`} className="text-xs text-neutral-600">
           {hint}
         </p>
       ) : null}

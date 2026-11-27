@@ -97,7 +97,7 @@ export function AssistantChat({ locale }: { locale: Locale }) {
           </div>
           <div data-testid="assistant-messages" className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
             {messages.length === 0 ? (
-              <p className="text-sm leading-7 text-neutral-500">{t("hint")}</p>
+              <p className="text-sm leading-7 text-neutral-600">{t("hint")}</p>
             ) : null}
             {messages.map((message, index) => (
               <div

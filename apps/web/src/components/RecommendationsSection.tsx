@@ -72,7 +72,7 @@ export function RecommendationsSection({ locale }: { locale: Locale }) {
         {items.map((item) => (
           <div key={item.product.id} className="flex flex-col gap-1">
             <ProductCard product={item.product} locale={locale} />
-            <p data-testid="recommendation-reason" className="px-1 text-xs leading-5 text-neutral-500">
+            <p data-testid="recommendation-reason" className="px-1 text-xs leading-5 text-neutral-600">
               {item.reasons.map((reason) => t(reason)).join("، ")}
             </p>
           </div>

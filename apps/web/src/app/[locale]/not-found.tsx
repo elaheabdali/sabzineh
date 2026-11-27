@@ -6,7 +6,7 @@ export default function LocaleNotFound() {
   return (
     <div className="py-16 text-center">
       <h1 className="text-2xl font-bold">404</h1>
-      <p className="mt-2 text-neutral-500">{t("error")}</p>
+      <p className="mt-2 text-neutral-600">{t("error")}</p>
       <Link href="/" className="mt-6 inline-block text-leaf-700 underline">
         {t("back")}
       </Link>

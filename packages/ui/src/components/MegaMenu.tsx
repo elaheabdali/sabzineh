@@ -49,7 +49,7 @@ export function MegaMenu({ tree, locale, hrefFor, onNavigate }: MegaMenuProps) {
               )}
             >
               {label(top)}
-              <ChevronDown className="size-4 text-neutral-500" aria-hidden="true" />
+              <ChevronDown className="size-4 text-neutral-600" aria-hidden="true" />
             </a>
             {openId === top.id && top.children?.length ? (
               <div className="absolute start-0 top-full z-50 mt-1 w-[36rem] rounded-2xl border border-cream-200 bg-white p-6 shadow-xl">
@@ -99,7 +99,7 @@ export function MegaMenu({ tree, locale, hrefFor, onNavigate }: MegaMenuProps) {
               >
                 {label(top)}
                 <ChevronLeft
-                  className={cn("size-4 text-neutral-500 transition-transform", expanded && "-rotate-90")}
+                  className={cn("size-4 text-neutral-600 transition-transform", expanded && "-rotate-90")}
                   aria-hidden="true"
                 />
               </button>

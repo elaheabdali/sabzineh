@@ -109,6 +109,50 @@ Messages live in `src/messages/fa.json` / `en.json`.
 Vazirmatn is self-hosted from `@fontsource-variable/vazirmatn` —
 no Google Fonts, no CDN, no third-party scripts.
 
+## SEO (Week 8)
+
+- `src/app/sitemap.ts` — 368 URLs (2 locales × home, search, 50
+  categories, 120 products, 12 vendor shops), built from the seed
+  catalog so it never depends on `DATABASE_URL`. `src/app/robots.ts`
+  allows everything public and points at the sitemap.
+- Per-locale metadata in `[locale]/layout.tsx` (`metadataBase`,
+  canonical + `hreflang` alternates fa/en/x-default, Open Graph,
+  favicon) and on category/product pages (`generateMetadata`).
+- JSON-LD via a single `JsonLd` component (the only
+  `dangerouslySetInnerHTML` in the app, static server data only):
+  `Organization` + `WebSite` on home, `Product` + `BreadcrumbList`
+  on product pages, `BreadcrumbList` on category pages. Prices use
+  `priceCurrency: IRT` (Toman).
+- `NEXT_PUBLIC_APP_URL` must be the production URL in Vercel —
+  canonicals, Open Graph and the sitemap all derive from it
+  (fallback: `https://sabzineh-web.vercel.app`).
+
+## Accessibility (Week 8)
+
+- `tests/e2e/a11y.spec.ts` — axe (`@axe-core/playwright`) over home,
+  category, product, cart, checkout, login, vendor and admin
+  dashboards, plus a keyboard-only checkout check (Tab reaches the
+  address form and its submit button; typing works without a mouse).
+- Fixes found by the suite: `text-neutral-500` on the cream page
+  background was 4.42:1 (below WCAG 2.2 AA 4.5:1) — all 73 uses
+  became `text-neutral-600` (≈7:1); `aria-pressed` on filter links
+  is invalid on the `link` role — now `aria-current` on the active
+  filter. Result: 0 axe violations on all 8 flows (was 20).
+
+## Performance (Week 8, local prod build, Chromium)
+
+- `.next/static` 1.2 MB total; largest JS chunk 224 KB (framework).
+- Median of 3 runs, local server: home TTFB 41 ms / load 208 ms,
+  category TTFB 114 ms / load 225 ms, product TTFB 97 ms / load 225 ms;
+  document transfer ≈ 18–20 KB compressed. Images are data-URI SVG
+  placeholders (no CDN, no external host — verified in built HTML)
+  and uploaded images ride as data: URLs under the CSP
+  `img-src 'self' data:`.
+- No Lighthouse score is claimed: this VM has no Lighthouse-capable
+  browser (only the headless shell), so the plan's "Performance > 90,
+  LCP < 2.5s" item is UNVERIFIED — run Lighthouse on the deployed
+  site to confirm it.
+
 ## Monorepo
 
 Turborepo + pnpm workspaces. Shared code lives in `packages/`:

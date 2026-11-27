@@ -43,7 +43,7 @@ export function VendorProfileForm({ profile }: { profile: VendorProfileDTO }) {
         defaultValue={profile.phone ?? ""}
       />
       <Input label={t("logoUrl")} name="logoUrl" type="url" defaultValue={profile.logoUrl ?? ""} />
-      <p className="text-xs leading-5 text-neutral-500">{t("payoutNote")}</p>
+      <p className="text-xs leading-5 text-neutral-600">{t("payoutNote")}</p>
       <Input
         label={t("payoutIban")}
         name="payoutIban"

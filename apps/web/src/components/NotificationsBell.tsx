@@ -159,7 +159,7 @@ export function NotificationsBell({ locale }: { locale: Locale }) {
             ) : null}
           </div>
           {items.length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-500">{t("empty")}</p>
+            <p className="mt-3 text-sm text-neutral-600">{t("empty")}</p>
           ) : (
             <ul className="mt-2 flex max-h-80 flex-col gap-2 overflow-y-auto">
               {items.map((item) => (

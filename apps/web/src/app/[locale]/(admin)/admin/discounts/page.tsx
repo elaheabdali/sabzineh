@@ -157,7 +157,7 @@ export default async function AdminDiscountsPage({
                   aria-label={t("expiresAt")}
                   className="rounded-xl border border-cream-200 px-2 py-1 text-sm"
                 />
-                <span className="text-xs text-neutral-500">
+                <span className="text-xs text-neutral-600">
                   {t("usedCount")}: {discount.usedCount}
                 </span>
                 <button
