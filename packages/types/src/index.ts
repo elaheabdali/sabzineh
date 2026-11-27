@@ -126,3 +126,54 @@ export const MoneySchema = z.object({
   payable: z.number().int().nonnegative(),
 });
 export type Money = z.infer<typeof MoneySchema>;
+
+// ---------------------------------------------------------------------------
+// Auth (Week 3) — one schema validates the form on the client and the
+// payload on the server. Password rules live in lib/auth/password.ts
+// (same constants, enforced server-side); the schema only checks shape.
+// ---------------------------------------------------------------------------
+
+export const LoginSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  password: z.string().min(1),
+});
+export type LoginInput = z.infer<typeof LoginSchema>;
+
+export const RegisterSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().toLowerCase().email(),
+  /** Iranian mobile, 09xxxxxxxxx or +989xxxxxxxxx (normalised server-side). */
+  phone: z.string().trim().min(10).max(15),
+  password: z.string().min(8).max(128),
+});
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+
+/** The public shape of a signed-in user — never includes a password hash. */
+export const SessionUserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string(),
+  role: RoleSchema,
+  vendorId: z.string().nullable(),
+});
+export type SessionUser = z.infer<typeof SessionUserSchema>;
+
+// ---------------------------------------------------------------------------
+// Addresses (Week 3)
+// ---------------------------------------------------------------------------
+
+export const AddressSchema = z.object({
+  title: z.string().trim().min(2).max(40),
+  city: z.string().trim().min(2).max(60),
+  text: z.string().trim().min(10).max(300),
+  /** Exactly 10 digits (Persian digits are normalised server-side). */
+  postalCode: z.string().trim().min(10).max(10),
+  phone: z.string().trim().min(10).max(15),
+});
+export type AddressInput = z.infer<typeof AddressSchema>;
+
+export const AddressDTOSchema = AddressSchema.extend({
+  id: z.string(),
+  userId: z.string(),
+});
+export type AddressDTO = z.infer<typeof AddressDTOSchema>;

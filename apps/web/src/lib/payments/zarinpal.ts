@@ -64,7 +64,11 @@ export class ZarinpalPaymentPort implements PaymentPort {
         `Zarinpal request failed: ${data.data?.message ?? data.errors?.message ?? "unknown error"}`,
       );
     }
-    return { authority, paymentUrl: `${this.payBase}/${authority}` };
+    return { authority, paymentUrl: this.paymentUrlFor(authority) };
+  }
+
+  paymentUrlFor(authority: string): string {
+    return `${this.payBase}/${authority}`;
   }
 
   async verify(authority: string, amount: number): Promise<VerifyResult> {

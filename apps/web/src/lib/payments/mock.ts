@@ -13,11 +13,15 @@ import type {
 export class MockPaymentPort implements PaymentPort {
   readonly provider = "mock" as const;
 
+  paymentUrlFor(authority: string, locale = "fa"): string {
+    return `/${locale}/payment/mock?authority=${encodeURIComponent(authority)}`;
+  }
+
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const authority = `MOCK-${input.orderId}`;
     return {
       authority,
-      paymentUrl: `/payment/mock?authority=${encodeURIComponent(authority)}&amount=${input.amount}`,
+      paymentUrl: this.paymentUrlFor(authority, input.locale ?? "fa"),
     };
   }
 

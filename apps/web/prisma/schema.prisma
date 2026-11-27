@@ -133,6 +133,20 @@ model User {
   tickets       Ticket[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  sessions      Session[]
+}
+
+/** Server-side session (Week 3). Opaque random token, stored hashed? No —
+ *  the token itself is the secret: it is only ever sent in an httpOnly
+ *  cookie, never logged, and looked up by exact match. */
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 model VendorProfile {
@@ -216,6 +230,14 @@ model Order {
   total          Int
   discountId     String?
   discount       Discount?   @relation(fields: [discountId], references: [id])
+  /** Snapshot of the discount value applied (Toman). */
+  discountAmount Int         @default(0)
+  /** Wallet amount applied at order time (Toman). */
+  walletApplied  Int         @default(0)
+  /** Amount still owed via the gateway after discount + wallet. */
+  payable        Int         @default(0)
+  addressId      String?
+  address        Address?    @relation(fields: [addressId], references: [id])
   idempotencyKey String      @unique
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -368,6 +390,8 @@ model Address {
   postalCode String
   phone      String
   createdAt  DateTime @default(now())
+
+  orders Order[]
 }
 
 model Review {

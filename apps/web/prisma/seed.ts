@@ -1,11 +1,11 @@
 /**
  * Prisma seed. Requires DATABASE_URL (Neon) — run `pnpm db:seed`.
  *
- * Demo accounts use password "demo1234" for all three roles.
- * The stored hash below is a PLACEHOLDER, not a real credential:
- * real auth (bcrypt + sessions) lands in Week 3, and the placeholder
- * is replaced then. Never ship a demo password to production.
+ * Demo accounts use password "demo1234" for all three roles, hashed
+ * with bcrypt at seed time (Week 3). Never ship a demo password to
+ * production.
  */
+import { hashSync } from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { seedData } from "./seed-data";
 
@@ -18,7 +18,8 @@ function placeholderImage(title: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-const DEMO_PASSWORD_HASH = "DEMO-ONLY-PLACEHOLDER--REPLACE-WITH-BCRYPT-IN-WEEK-3";
+/** Real bcrypt hash of the demo password, computed at seed time. */
+const DEMO_PASSWORD_HASH = hashSync("demo1234", 10);
 
 async function main() {
   // Vendors + demo users first (products reference vendors).

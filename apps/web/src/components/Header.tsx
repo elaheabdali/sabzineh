@@ -7,15 +7,18 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { useCartStore } from "@/stores/cart";
 import { HeaderSearch } from "./SearchForm";
 import type { Locale } from "@/i18n/routing";
+import type { SessionUser } from "@sabzineh/types";
+import { logoutAction } from "@/server/auth/actions";
 import { useTranslations } from "next-intl";
 
 interface HeaderProps {
   locale: Locale;
   categoryTree: MegaMenuNode[];
+  sessionUser: SessionUser | null;
 }
 
 /** Site header: brand, MegaMenu (desktop + mobile accordion), cart, locale switch. */
-export function Header({ locale, categoryTree }: HeaderProps) {
+export function Header({ locale, categoryTree, sessionUser }: HeaderProps) {
   const t = useTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const count = useCartStore((state) => state.count());
@@ -55,12 +58,46 @@ export function Header({ locale, categoryTree }: HeaderProps) {
         </div>
         <HeaderSearch />
         <div className="ms-auto flex items-center gap-2">
-          <Link
-            href="/account/orders"
-            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-ink-900 hover:bg-cream-100 sm:block"
-          >
-            {t("orders")}
-          </Link>
+          {sessionUser ? (
+            <>
+              <span className="hidden text-sm font-medium text-ink-900 md:block" data-testid="header-user">
+                {sessionUser.name}
+              </span>
+              <Link
+                href={
+                  sessionUser.role === "ADMIN"
+                    ? "/admin/dashboard"
+                    : sessionUser.role === "VENDOR"
+                      ? "/vendor/dashboard"
+                      : "/account/orders"
+                }
+                className="hidden rounded-lg px-3 py-2 text-sm font-medium text-ink-900 hover:bg-cream-100 sm:block"
+              >
+                {sessionUser.role === "ADMIN"
+                  ? t("adminPanel")
+                  : sessionUser.role === "VENDOR"
+                    ? t("vendorPanel")
+                    : t("orders")}
+              </Link>
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  data-testid="logout-button"
+                  className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-ink-900 hover:bg-cream-100"
+                >
+                  {t("logout")}
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link
+              href="/auth/login"
+              data-testid="login-link"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-ink-900 hover:bg-cream-100"
+            >
+              {t("login")}
+            </Link>
+          )}
           <Link
             href={pathname}
             locale={otherLocale}
@@ -69,7 +106,7 @@ export function Header({ locale, categoryTree }: HeaderProps) {
             {otherLocale === "fa" ? "فارسی" : "English"}
           </Link>
           <Link
-            href="/account/orders"
+            href="/cart"
             aria-label={t("cart")}
             className="relative rounded-lg p-2 hover:bg-cream-100"
           >

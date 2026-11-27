@@ -41,6 +41,13 @@ export interface CatalogRepository {
   listProducts(params: FilterParams, scope?: { categoryIds?: string[] }): Promise<CatalogListResult>;
   getFacets(params: FilterParams, scope?: { categoryIds?: string[] }): Promise<FacetCounts>;
   getProductBySlug(slug: string): Promise<ProductDTO | null>;
+  getProductById(id: string): Promise<ProductDTO | null>;
+  /**
+   * Adjusts stock by delta (negative = reserve at order time, positive =
+   * release on cancel). Throws when the result would go below zero.
+   * Returns the new stock level.
+   */
+  adjustStock(productId: string, delta: number): Promise<number>;
   getCategoryBySlug(slug: string): Promise<CategoryDTO | null>;
   getCategoryById(id: string): Promise<CategoryDTO | null>;
   getAllProductSlugs(): Promise<string[]>;
@@ -158,6 +165,21 @@ export class SeedCatalogRepository implements CatalogRepository {
 
   async getProductBySlug(slug: string): Promise<ProductDTO | null> {
     return getSeedProductBySlug(slug) ?? null;
+  }
+
+  async getProductById(id: string): Promise<ProductDTO | null> {
+    return seedProducts.find((p) => p.id === id) ?? null;
+  }
+
+  async adjustStock(productId: string, delta: number): Promise<number> {
+    const product = seedProducts.find((p) => p.id === productId);
+    if (!product) throw new Error(`Unknown product: ${productId}`);
+    const next = product.stock + delta;
+    if (next < 0) throw new Error(`Insufficient stock for product: ${product.title}`);
+    // In-memory mutation: the seed array is the store in no-DB mode,
+    // so the new level is visible to every later read in this process.
+    product.stock = next;
+    return next;
   }
 
   async getCategoryBySlug(slug: string): Promise<CategoryDTO | null> {
@@ -306,6 +328,32 @@ export class PrismaCatalogRepository implements CatalogRepository {
   async getProductBySlug(slug: string): Promise<ProductDTO | null> {
     const product = await this.prisma.product.findUnique({ where: { slug } });
     return product ? toProductDTO(product) : null;
+  }
+
+  async getProductById(id: string): Promise<ProductDTO | null> {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    return product ? toProductDTO(product) : null;
+  }
+
+  async adjustStock(productId: string, delta: number): Promise<number> {
+    // Guarded update: only applies when the result stays >= 0, so two
+    // concurrent checkouts cannot oversell the same product.
+    const updated = await this.prisma.product.updateMany({
+      where: { id: productId, stock: { gte: -delta } },
+      data: { stock: { increment: delta } },
+    });
+    if (updated.count === 0) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
+        select: { title: true },
+      });
+      throw new Error(`Insufficient stock for product: ${product?.title ?? productId}`);
+    }
+    const after = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { stock: true },
+    });
+    return after?.stock ?? 0;
   }
 
   async getCategoryBySlug(slug: string): Promise<CategoryDTO | null> {

@@ -1,26 +1,22 @@
-import type { Role } from "@sabzineh/types";
+import type { Role, SessionUser } from "@sabzineh/types";
+import { getSessionUserFromToken } from "./service";
+import { readSessionToken } from "./cookies";
 
 /**
- * RBAC guards (Week 1 skeleton).
+ * RBAC guards — now backed by real sessions (Week 3).
  *
- * Real sessions land in Week 3 (auth + roles). Until then `getSession`
- * returns null, so `requireRole` always denies protected panels —
- * fail-closed by design. The pure helpers (`hasAccess`,
- * `canAccessVendor`) are unit-tested now and reused by the real
- * session code later; nothing in the app trusts a client-side role.
+ * getSession() reads the httpOnly session cookie and resolves it
+ * server-side (cookie → session record → user). It never trusts a
+ * client-supplied role: the role comes from the user record.
+ * Outside a request (unit tests) the cookie read resolves to null —
+ * fail-closed by design.
  */
 
-export interface Session {
-  userId: string;
-  email: string;
-  role: Role;
-  /** Set for vendors: the vendor profile this session may access. */
-  vendorId?: string;
-}
+export type Session = SessionUser;
 
-/** Week 3 replaces this with a real session lookup (cookie → DB). */
 export async function getSession(): Promise<Session | null> {
-  return null;
+  const token = await readSessionToken();
+  return getSessionUserFromToken(token);
 }
 
 /** Pure role check — no I/O, safe to use in components and tests. */
@@ -61,4 +57,26 @@ export async function requireRole(required: Role[]): Promise<Session> {
   if (!session) throw new UnauthorizedError();
   if (!hasAccess(session, required)) throw new ForbiddenError();
   return session;
+}
+
+/** Any signed-in user, regardless of role. */
+export async function requireSession(): Promise<Session> {
+  const session = await getSession();
+  if (!session) throw new UnauthorizedError();
+  return session;
+}
+
+/**
+ * Page-level guard: pages call this instead of try/catching
+ * requireRole themselves. Returns the session, or `{ forbidden: true }`
+ * when the user is signed in with the wrong role. Callers redirect
+ * to login on UnauthorizedError.
+ */
+export async function authorizePage(
+  required: Role[],
+): Promise<{ session: Session } | { forbidden: true }> {
+  const session = await getSession();
+  if (!session) throw new UnauthorizedError();
+  if (!hasAccess(session, required)) return { forbidden: true };
+  return { session };
 }

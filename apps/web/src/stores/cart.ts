@@ -16,6 +16,13 @@ interface CartState {
   setQty: (productId: string, qty: number) => void;
   clear: () => void;
   count: () => number;
+  /**
+   * Merges guest lines captured before login into the current cart
+   * (deduplicated by product, capped at 99). The cart is device-local
+   * (persist), so it survives login by construction — this is the
+   * explicit merge point, called by the login form on success.
+   */
+  mergeGuestCart: (lines: CartLine[]) => void;
   /** Server-trusted subtotal is computed at checkout; this is display-only. */
   subtotal: () => number;
 }
@@ -69,6 +76,19 @@ export const useCartStore = create<CartState>()(
               },
         ),
       clear: () => set({ lines: [] }),
+      mergeGuestCart: (guestLines) =>
+        set((state) => {
+          const lines = [...state.lines];
+          for (const guest of guestLines) {
+            const existing = lines.find((l) => l.productId === guest.productId);
+            if (existing) {
+              existing.qty = Math.min(99, existing.qty + guest.qty);
+            } else {
+              lines.push({ productId: guest.productId, qty: Math.min(99, Math.max(1, guest.qty)) });
+            }
+          }
+          return { lines };
+        }),
       count: () => get().lines.reduce((sum, l) => sum + l.qty, 0),
       subtotal: () =>
         get().lines.reduce((sum, l) => {

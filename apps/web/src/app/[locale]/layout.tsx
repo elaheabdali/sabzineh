@@ -7,6 +7,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { buildCategoryTree } from "@/data/seed";
+import { getSession } from "@/lib/auth/guards";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -41,12 +42,13 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
   const messages = await getMessages();
   const tree = buildCategoryTree();
+  const sessionUser = await getSession();
 
   return (
     <html lang={locale} dir={locale === "fa" ? "rtl" : "ltr"}>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <Header locale={locale} categoryTree={tree} />
+          <Header locale={locale} categoryTree={tree} sessionUser={sessionUser} />
           <main className="mx-auto min-h-[60vh] w-full max-w-7xl px-4 pb-16">{children}</main>
           <Footer locale={locale} />
         </NextIntlClientProvider>

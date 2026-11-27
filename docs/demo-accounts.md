@@ -1,8 +1,8 @@
 # Demo accounts
 
 Seeded by `apps/web/prisma/seed.ts` (password `demo1234` for all three
-— demo only; the stored hash is a placeholder until real auth lands
-in Week 3).
+— demo only; stored as a real bcrypt hash since Week 3, and hashed
+in-memory in seed mode).
 
 | Role | Email | Shop / note |
 |---|---|---|

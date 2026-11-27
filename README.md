@@ -81,6 +81,46 @@ The migration for the Week 2 `Product.local` column
 because no database was available to run `prisma migrate dev`
 against; verify it with `prisma migrate deploy` once Neon exists.
 
+### Auth, sessions and orders: Prisma vs memory adapter (Week 3)
+
+The same switch applies to auth and checkout, behind two more
+interfaces in `src/lib/auth/store.ts` (`UserStore`/`SessionStore`)
+and `src/server/store.ts` (`DataStore`):
+
+- `MemoryUserStore` / `MemorySessionStore` / `MemoryDataStore` —
+  in-memory, active while `DATABASE_URL` is unset. Demo users are
+  seeded from `seed.json` and the demo password is hashed with
+  bcrypt once per server process (`hashPassword(DEMO_PASSWORD)`,
+  never stored in code). The demo-customer wallet holds 150,000
+  Toman; discounts come from `seed.json`. Orders, payments and
+  wallet transactions live only in process memory and reset on
+  restart — the same seed-JSON fallback the catalog uses.
+- `PrismaUserStore` / `PrismaSessionStore` / `PrismaDataStore` —
+  real Postgres rows (migration `0003_auth_sessions`: `Session`
+  table + `Order.discountAmount/walletApplied/payable/addressId`).
+  Selected automatically by `getUserStore()` / `getSessionStore()` /
+  `getDataStore()` as soon as `DATABASE_URL` is set — no page or
+  action code changes. `getAuthDataSource()` /
+  `getOrderDataSource()` report which adapter is active.
+
+Sessions are opaque random tokens stored server-side with a 7-day
+expiry; the cookie (`sabzineh-session`, httpOnly, sameSite=lax,
+secure in production) carries only the token. `getSession()` in
+`src/lib/auth/guards.ts` resolves the token server-side and never
+trusts a client-supplied role. `src/proxy.ts` redirects guests
+away from `/account`, `/vendor` and `/admin` when the cookie is
+absent (fast path only — the page guards do the real check).
+
+Checkout rules (all server-side, `src/server/orders/service.ts`):
+prices and stock are re-read at order time, the same
+Idempotency-Key returns the same order (no double charge, no
+double wallet debit, no double stock reservation), stock is
+reserved at creation and released on cancel/failed payment, and a
+cancelled order refunds the wallet debit with a
+`WalletTransaction` record. The cart itself is device-local
+(Zustand + persist) and survives login; the order page clears it
+once the order is seen as PAID.
+
 ### If `pnpm install` fails with EPERM chown on the lockfile
 
 On this VM the workspace files are owned by `root:nogroup`, and
@@ -135,8 +175,10 @@ built CSS with `grep -o <utility> apps/web/.next/static/chunks/*.css`.
 | Vendor | vendor@sabzineh.ir | demo1234 |
 | Customer | customer@sabzineh.ir | demo1234 |
 
-See `docs/demo-accounts.md`. Real authentication lands in Week 3;
-the seeded password hashes are placeholders, not real credentials.
+See `docs/demo-accounts.md`. Week 3: bcrypt password hashes (demo
+password `demo1234` hashed at seed time), httpOnly cookie sessions,
+registration for customers. Demo only — never ship these accounts
+to production.
 
 ## Project structure
 
@@ -173,6 +215,15 @@ sabzineh/
 - [x] Product page: gallery, quantity, stock states, reviews, related products
 - [x] Vitest 67 tests; Playwright E2E on Chromium + Firefox (filter acceptance, search, product/cart)
 - [ ] Real Prisma queries against Neon (blocked on `DATABASE_URL`)
+
+## Week 3 done-criteria
+
+- [x] Real auth: bcrypt passwords, httpOnly cookie sessions (7-day, server-side records, logout invalidates), customer registration (Iranian mobile + password strength), one-click demo login for all 3 roles
+- [x] Roles + guards: proxy redirect for guests, `requireRole` per route group, vendors see only their own data (vendorId from session), cross-user order pages return not-found
+- [x] Cart: per-vendor groups, quantity controls capped at stock, persisted cart merged on login, server-side price/stock re-validation at checkout
+- [x] Checkout: address book (Iranian postal code + phone), server-side discount validation (usage cap, min amount, expiry, once per user), wallet full/partial + gateway, idempotent order creation, mock gateway page, cancel/failed path keeps the cart
+- [x] Vitest 104 tests; Playwright E2E on Chromium + Firefox (full purchase flow, cancelled payment, role guards, cross-user isolation)
+- [ ] Real Prisma queries against Neon (blocked on `DATABASE_URL` after password rotation; `prisma migrate deploy` for 0001/0002/0003)
 
 ## Roadmap
 

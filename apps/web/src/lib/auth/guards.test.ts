@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { canAccessVendor, hasAccess, type Session } from "./guards";
 
-const admin: Session = { userId: "u1", email: "a@sabzineh.ir", role: "ADMIN" };
-const vendor: Session = { userId: "u2", email: "v@sabzineh.ir", role: "VENDOR", vendorId: "v01" };
-const customer: Session = { userId: "u3", email: "c@sabzineh.ir", role: "CUSTOMER" };
+const admin: Session = { id: "u1", email: "a@sabzineh.ir", name: "Admin", role: "ADMIN", vendorId: null };
+const vendor: Session = { id: "u2", email: "v@sabzineh.ir", name: "Vendor", role: "VENDOR", vendorId: "v01" };
+const customer: Session = { id: "u3", email: "c@sabzineh.ir", name: "Customer", role: "CUSTOMER", vendorId: null };
 
 describe("hasAccess", () => {
   it("denies anonymous sessions", () => {
