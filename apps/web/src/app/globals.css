@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@import "@fontsource-variable/vazirmatn";
+@import "@sabzineh/config/tailwind/theme.css";
+
+/* NOTE: @source for packages/ui was tried here and does NOT emit
+   ui-only utilities in this Turbopack setup (same as ela-coffee).
+   Instead, apps/web/src/ui-safelist.ts lists them — see that file. */
+
+/*
+ * Sabzineh base styles.
+ *
+ * NOTE (ela-coffee lesson): Tailwind v4 does not emit utilities used
+ * ONLY in packages/ui, so shared components must not rely on a utility
+ * that no apps/web file uses. The pages and components in this app
+ * use the same leaf/cream utilities, and the build is verified by
+ * grepping the emitted CSS for a ui-only class (see README).
+ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-cream-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+}

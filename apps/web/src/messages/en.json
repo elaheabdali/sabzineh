@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "home": "Home",
+    "categories": "Categories",
+    "cart": "Cart",
+    "orders": "My orders",
+    "account": "Account",
+    "vendorPanel": "Vendor panel",
+    "adminPanel": "Admin panel",
+    "login": "Sign in",
+    "box": "Weekly box"
+  },
+  "home": {
+    "heroTitle": "Fresh from the farm, to your home",
+    "heroSubtitle": "Organic and local products from farmers and producers across Iran — with the weekly Sabzineh box.",
+    "heroCta": "See the weekly box",
+    "featured": "Featured products",
+    "categories": "Categories",
+    "vendors": "Vendors",
+    "allProducts": "All products",
+    "freeDeliveryNote": "Fresh delivery in hygienic packaging"
+  },
+  "category": {
+    "products": "products",
+    "subcategories": "Subcategories",
+    "noProducts": "No products in this category yet.",
+    "sort": "Sort",
+    "inStockOnly": "In stock only",
+    "organicOnly": "Organic only"
+  },
+  "product": {
+    "addToCart": "Add to cart",
+    "outOfStock": "Out of stock",
+    "toman": "Toman",
+    "vendor": "Vendor",
+    "organic": "Organic",
+    "glutenFree": "Gluten-free",
+    "related": "Related products",
+    "stock": "Stock"
+  },
+  "cart": {
+    "empty": "Your cart is empty.",
+    "total": "Total",
+    "checkout": "Checkout"
+  },
+  "common": {
+    "search": "Search",
+    "searchPlaceholder": "Product, vendor or category…",
+    "loading": "Loading…",
+    "error": "Something went wrong. Try again.",
+    "back": "Back"
+  }
+}

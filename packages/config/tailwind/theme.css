@@ -1,0 +1,18 @@
+/*
+ * Shared Tailwind v4 theme tokens for sabzineh.
+ * Imported by apps/web/src/app/globals.css. Sabzineh is a fresh brand:
+ * deep leaf green on warm cream — deliberately not the ela-coffee palette.
+ */
+@theme {
+  --font-sans: "Vazirmatn Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-leaf-50: #f2f7f0;
+  --color-leaf-100: #dcead8;
+  --color-leaf-200: #bcd6b4;
+  --color-leaf-600: #2f6b2a;
+  --color-leaf-700: #265423;
+  --color-leaf-900: #1c3d1a;
+  --color-cream-50: #faf7ef;
+  --color-cream-100: #f3eddc;
+  --color-cream-200: #e7dcc0;
+  --color-ink-900: #211d15;
+}

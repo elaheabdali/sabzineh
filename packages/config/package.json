@@ -1,0 +1,17 @@
+{
+  "name": "@sabzineh/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./eslint": "./eslint/index.mjs",
+    "./prettier": "./prettier/index.json",
+    "./tailwind/theme.css": "./tailwind/theme.css"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "eslint-config-next": "16.4.6",
+    "typescript": "^5.9.3"
+  }
+}

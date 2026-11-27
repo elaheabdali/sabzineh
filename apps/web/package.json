@@ -1,0 +1,48 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "scripts": {
+    "build": "next build",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "dev": "next dev",
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sabzineh/types": "workspace:*",
+    "@sabzineh/ui": "workspace:*",
+    "@fontsource-variable/vazirmatn": "^5.3.0",
+    "@prisma/client": "^6.18.0",
+    "@tanstack/react-query": "^5.108.4",
+    "lucide-react": "^0.556.0",
+    "next": "16.4.6",
+    "next-intl": "^4.16.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-hook-form": "^7.92.0",
+    "zod": "^4.6.7",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@sabzineh/config": "workspace:*",
+    "@tailwindcss/turbopack": "4.3.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "prisma": "^6.18.0",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.20.0",
+    "typescript": "^5",
+    "vitest": "^4.0.17"
+  }
+}
