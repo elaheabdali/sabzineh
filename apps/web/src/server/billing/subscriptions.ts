@@ -78,14 +78,18 @@ const WEEKDAYS: Record<string, number> = {
 /**
  * Next occurrence of the plan's delivery weekday, at least one day
  * ahead (a same-day delivery is never "next"). Time is start of day.
+ *
+ * Computed in UTC so the result (and the idempotency key derived
+ * from its ISO date) is identical in every timezone — local-time
+ * math shifted the date back a day under Asia/Tehran (+03:30).
  */
 export function nextDeliveryDate(deliveryDay: string, from: Date = new Date()): Date {
   const wanted = WEEKDAYS[deliveryDay.toLowerCase()] ?? 4; // Thursday default
   const start = new Date(from);
-  start.setHours(0, 0, 0, 0);
-  let delta = (wanted - start.getDay() + 7) % 7;
+  start.setUTCHours(0, 0, 0, 0);
+  let delta = (wanted - start.getUTCDay() + 7) % 7;
   if (delta === 0) delta = 7;
-  start.setDate(start.getDate() + delta);
+  start.setUTCDate(start.getUTCDate() + delta);
   return start;
 }
 
