@@ -399,3 +399,20 @@ describe("vendor profile + registration", () => {
     ).rejects.toBeInstanceOf(AuthError);
   });
 });
+
+describe("Phase 4 — buildDailySales", () => {
+  it("zero-fills the window and sums fulfilled rows per day", async () => {
+    const { buildDailySales } = await import("./service");
+    const now = new Date("2026-11-28T12:00:00Z");
+    const rows = [
+      { orderId: "o1", orderStatus: "PAID", createdAt: new Date("2026-11-28T08:00:00Z"), productId: "p1", title: "x", qty: 1, unitPrice: 100, commissionRate: 0.1, gross: 100 },
+      { orderId: "o2", orderStatus: "DELIVERED", createdAt: new Date("2026-11-28T09:00:00Z"), productId: "p1", title: "x", qty: 1, unitPrice: 50, commissionRate: 0.1, gross: 50 },
+      { orderId: "o3", orderStatus: "CANCELLED", createdAt: new Date("2026-11-27T09:00:00Z"), productId: "p1", title: "x", qty: 1, unitPrice: 999, commissionRate: 0.1, gross: 999 },
+    ] as never[];
+    const series = buildDailySales(rows, 14, now);
+    expect(series).toHaveLength(14);
+    expect(series[13]).toEqual({ date: "2026-11-28", gross: 150 });
+    expect(series[12].gross).toBe(0);
+    expect(series[0].date).toBe("2026-11-15");
+  });
+});

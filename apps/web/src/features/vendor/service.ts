@@ -108,6 +108,41 @@ export interface VendorDashboardData {
   productCount: number;
   topProducts: { productId: string; title: string; qty: number; gross: number }[];
   orders: VendorOrderItemRow[];
+  /** Phase 4: gross per day for the last 14 days, oldest first. */
+  dailySales: { date: string; gross: number }[];
+}
+
+/**
+ * Buckets fulfilled order rows into per-day gross totals for the
+ * trailing `days` window (including today). Days without sales are
+ * zero-filled so the chart axis is continuous.
+ */
+function dayKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function buildDailySales(
+  rows: VendorOrderItemRow[],
+  days = 14,
+  now = new Date(),
+): { date: string; gross: number }[] {
+  const buckets = new Map<string, number>();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - (days - 1));
+  for (let i = 0; i < days; i += 1) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    buckets.set(dayKey(day), 0);
+  }
+  for (const row of rows) {
+    if (!FULFILLED_ORDER_STATUSES.includes(row.orderStatus)) continue;
+    const key = dayKey(row.createdAt);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + row.gross);
+  }
+  return [...buckets.entries()].map(([date, gross]) => ({ date, gross }));
 }
 
 export async function getVendorDashboard(session: SessionUser): Promise<VendorDashboardData> {
@@ -136,7 +171,15 @@ export async function getVendorDashboard(session: SessionUser): Promise<VendorDa
   const topProducts = [...byProduct.values()]
     .sort((a, b) => b.gross - a.gross)
     .slice(0, 5);
-  return { profile, revenue, orderCount, productCount: products.length, topProducts, orders };
+  return {
+    profile,
+    revenue,
+    orderCount,
+    productCount: products.length,
+    topProducts,
+    orders,
+    dailySales: buildDailySales(orders),
+  };
 }
 
 export async function createVendorProduct(

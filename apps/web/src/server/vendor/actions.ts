@@ -175,3 +175,24 @@ export async function getVendorProfileForPage() {
   const session = await requireSession();
   return getVendorProfile(session);
 }
+
+/**
+ * Phase 4: description draft generation. Uses the real AI client
+ * when AI_API_KEY is configured and transparently falls back to
+ * the template generator otherwise (or on any AI failure) — the
+ * vendor always reviews and edits the draft before saving.
+ */
+export async function generateProductDraftAction(input: {
+  title: string;
+  categoryName: string;
+  organic?: boolean;
+  glutenFree?: boolean;
+  local?: boolean;
+  price?: number;
+  locale?: "fa" | "en";
+}): Promise<{ description: string; tags: string[]; source: "ai" | "template" } | null> {
+  await requireRole(["VENDOR", "ADMIN"]);
+  const { generateProductDraftSmart } = await import("@/server/ai/client");
+  const { draft, source } = await generateProductDraftSmart(input);
+  return { ...draft, source };
+}
