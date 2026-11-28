@@ -312,7 +312,8 @@
     "pending": "Pending",
     "walletBalance": "Wallet balance",
     "generateDescription": "Generate description draft",
-    "generateDescriptionHint": "The draft is built from a fixed template; edit it before saving."
+    "generateDescriptionHint": "The draft is built from a fixed template; edit it before saving.",
+    "dailySales": "Daily sales (last 14 days)"
   },
   "admin": {
     "dashboard": "Admin dashboard",
@@ -429,7 +430,11 @@
     "paidPayouts": "Paid payouts",
     "pendingPayouts": "Pending payouts",
     "ordersByStatus": "Orders by status",
-    "topVendors": "Top vendors"
+    "topVendors": "Top vendors",
+    "plans": "Plans",
+    "createPlan": "Create plan",
+    "deletePlan": "Delete plan",
+    "dropRootHint": "Drop a category here to move it to the top level (or drop it onto another category to nest it)"
   },
   "common": {
     "search": "Search",

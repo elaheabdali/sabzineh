@@ -312,7 +312,8 @@
     "pending": "در انتظار",
     "walletBalance": "موجودی کیف پول",
     "generateDescription": "تولید پیش‌نویس توضیح",
-    "generateDescriptionHint": "پیش‌نویس با قالب ثابت ساخته می‌شود؛ پیش از ذخیره ویرایشش کنید."
+    "generateDescriptionHint": "پیش‌نویس با قالب ثابت ساخته می‌شود؛ پیش از ذخیره ویرایشش کنید.",
+    "dailySales": "فروش روزانه (۱۴ روز اخیر)"
   },
   "admin": {
     "dashboard": "پنل ادمین",
@@ -429,7 +430,11 @@
     "paidPayouts": "تسویه‌های پرداخت‌شده",
     "pendingPayouts": "تسویه‌های در انتظار",
     "ordersByStatus": "سفارش‌ها بر اساس وضعیت",
-    "topVendors": "فروشنده‌های برتر"
+    "topVendors": "فروشنده‌های برتر",
+    "plans": "پلن‌ها",
+    "createPlan": "ساخت پلن",
+    "deletePlan": "حذف پلن",
+    "dropRootHint": "دسته را اینجا رها کنید تا به سطح اصلی برگردد (یا روی هر دسته رها کنید تا زیرمجموعه‌اش شود)"
   },
   "common": {
     "search": "جستجو",
