@@ -167,7 +167,7 @@ export async function getVendorPlanInfo(vendorId: string): Promise<VendorPlanInf
   const store = getBillingStore();
   const subscription = await store.getActiveSubscription(profile.userId, "VENDOR");
   if (!subscription) return null;
-  const plan = getPlanById(subscription.planId);
+  const plan = await getPlanById(subscription.planId);
   if (!plan) return null;
   return { plan, subscription };
 }
@@ -184,7 +184,7 @@ export async function listMySubscriptions(userId: string): Promise<SubscriptionD
   const subs = await store.listSubscriptionsByUser(userId);
   const details: SubscriptionDetail[] = [];
   for (const subscription of subs) {
-    const plan = getPlanById(subscription.planId);
+    const plan = await getPlanById(subscription.planId);
     if (!plan) continue;
     const [deliveries, invoices] = await Promise.all([
       store.listBoxDeliveries(subscription.id),
@@ -202,7 +202,7 @@ export async function getSubscriptionDetail(
   const store = getBillingStore();
   const subscription = await store.getSubscriptionById(subscriptionId);
   if (!subscription || subscription.userId !== userId) return null;
-  const plan = getPlanById(subscription.planId);
+  const plan = await getPlanById(subscription.planId);
   if (!plan) return null;
   const [deliveries, invoices] = await Promise.all([
     store.listBoxDeliveries(subscription.id),
@@ -232,7 +232,7 @@ export async function generateWeeklyBox(
 ): Promise<GeneratedBox> {
   const store = getBillingStore();
   const billing = store;
-  const plan = getPlanById(subscription.planId);
+  const plan = await getPlanById(subscription.planId);
   if (!plan || plan.kind !== "BOX") throw new SubscriptionError("invalid-plan");
 
   const existing = (await billing.listBoxDeliveries(subscription.id)).find(
@@ -375,7 +375,7 @@ export async function subscribeToBox(
   payWith: "wallet" | "gateway",
   opts?: { locale?: string },
 ): Promise<SubscribeBoxResult> {
-  const plan = getPlanById(planId);
+  const plan = await getPlanById(planId);
   if (!plan || plan.kind !== "BOX") throw new SubscriptionError("invalid-plan");
   const store = getBillingStore();
   const existing = await store.getActiveSubscription(userId, "BOX");
@@ -478,7 +478,7 @@ export async function subscribeToVendorPlan(
   payWith: "wallet" | "gateway",
   opts?: { locale?: string },
 ): Promise<SubscribeVendorPlanResult> {
-  const plan = getPlanById(planId);
+  const plan = await getPlanById(planId);
   if (!plan || plan.kind !== "VENDOR") throw new SubscriptionError("invalid-plan");
   const user = await getUserStore().findById(userId);
   if (!user || user.role !== "VENDOR") throw new SubscriptionError("forbidden");
@@ -658,7 +658,7 @@ export async function settleOrderPaymentSideEffects(order: OrderRecord): Promise
     if (key.startsWith("plan:")) {
       const [, userId, planId] = key.split(":");
       if (!userId || !planId) return;
-      const plan = getPlanById(planId);
+      const plan = await getPlanById(planId);
       if (!plan || plan.kind !== "VENDOR") return;
       const existing = await store.getActiveSubscription(userId, "VENDOR");
       if (existing) return;
