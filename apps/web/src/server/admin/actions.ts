@@ -17,6 +17,13 @@ import {
 import { approvePayout, markPayoutPaid, PayoutError } from "@/server/billing/payouts";
 import { OrderError, refundOrder } from "@/server/orders/service";
 import { getBillingStore } from "@/server/billing/store";
+import {
+  createBannerAsAdmin,
+  deleteBannerAsAdmin,
+  setProductStatusAsAdmin,
+  updateBannerAsAdmin,
+} from "./service";
+import type { BannerInput, BannerPlacement } from "@/server/store";
 
 /**
  * Admin server actions (Week 6).
@@ -48,6 +55,10 @@ function revalidateAdmin(): void {
     revalidatePath(`/${locale}/admin/orders`);
     revalidatePath(`/${locale}/admin/payouts`);
     revalidatePath(`/${locale}/admin/audit`);
+    revalidatePath(`/${locale}/admin/products`);
+    revalidatePath(`/${locale}/admin/banners`);
+    revalidatePath(`/${locale}/admin/reports`);
+    revalidatePath(`/${locale}`);
   }
 }
 
@@ -257,6 +268,83 @@ export async function refundOrderAction(formData: FormData): Promise<void> {
     } else {
       console.error("refundOrderAction failed", error);
     }
+    return;
+  }
+  revalidateAdmin();
+}
+
+/** Phase 3: set a product's status from the admin products table. */
+export async function setProductStatusAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const productId = String(formData.get("productId") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (status !== "DRAFT" && status !== "PUBLISHED" && status !== "ARCHIVED") return;
+  try {
+    await setProductStatusAsAdmin(session.id, productId, status);
+  } catch (error) {
+    console.error("setProductStatusAction failed", error);
+    return;
+  }
+  revalidateAdmin();
+}
+
+const BANNER_PLACEMENTS: BannerPlacement[] = ["HOME_HERO", "HOME_STRIP", "CATEGORY"];
+
+function bannerInputFromForm(formData: FormData): BannerInput | null {
+  const title = String(formData.get("title") ?? "").trim();
+  const placement = String(formData.get("placement") ?? "") as BannerPlacement;
+  if (!title || !BANNER_PLACEMENTS.includes(placement)) return null;
+  const startsAtRaw = String(formData.get("startsAt") ?? "");
+  const endsAtRaw = String(formData.get("endsAt") ?? "");
+  return {
+    title,
+    imageUrl: String(formData.get("imageUrl") ?? ""),
+    linkUrl: String(formData.get("linkUrl") ?? "") || null,
+    placement,
+    startsAt: startsAtRaw ? new Date(startsAtRaw) : null,
+    endsAt: endsAtRaw ? new Date(endsAtRaw) : null,
+    active: formData.get("active") === "on",
+  };
+}
+
+/** Phase 3: create a banner from the admin banners page. */
+export async function createBannerAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const input = bannerInputFromForm(formData);
+  if (!input) return;
+  try {
+    await createBannerAsAdmin(session.id, input);
+  } catch (error) {
+    console.error("createBannerAction failed", error);
+    return;
+  }
+  revalidateAdmin();
+}
+
+/** Phase 3: update a banner (the edit form posts every field). */
+export async function updateBannerAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const bannerId = String(formData.get("bannerId") ?? "");
+  const input = bannerInputFromForm(formData);
+  if (!bannerId || !input) return;
+  try {
+    await updateBannerAsAdmin(session.id, bannerId, input);
+  } catch (error) {
+    console.error("updateBannerAction failed", error);
+    return;
+  }
+  revalidateAdmin();
+}
+
+/** Phase 3: delete a banner. */
+export async function deleteBannerAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const bannerId = String(formData.get("bannerId") ?? "");
+  if (!bannerId) return;
+  try {
+    await deleteBannerAsAdmin(session.id, bannerId);
+  } catch (error) {
+    console.error("deleteBannerAction failed", error);
     return;
   }
   revalidateAdmin();
