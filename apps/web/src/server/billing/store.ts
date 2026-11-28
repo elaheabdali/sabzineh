@@ -1,5 +1,6 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/prisma";
+import { plans as seedPlans } from "@/data/seed";
 
 /**
  * Billing store (Week 6) — one interface, two adapters (same pattern
@@ -57,6 +58,23 @@ export interface PayoutRecord {
   createdAt: Date;
 }
 
+export interface PlanRecord {
+  id: string;
+  kind: "BOX" | "VENDOR";
+  title: string;
+  price: number;
+  periodDays: number;
+  features: Record<string, unknown>;
+}
+
+export interface PlanInput {
+  kind: "BOX" | "VENDOR";
+  title: string;
+  price: number;
+  periodDays: number;
+  features: Record<string, unknown>;
+}
+
 export interface AuditLogRecord {
   id: string;
   actorId: string;
@@ -68,6 +86,14 @@ export interface AuditLogRecord {
 }
 
 export interface BillingStore {
+  /** Subscription plans (Phase 4: DB-backed, admin-managed). */
+  listPlans(): Promise<PlanRecord[]>;
+  getPlan(id: string): Promise<PlanRecord | null>;
+  createPlan(input: PlanInput): Promise<PlanRecord>;
+  updatePlan(id: string, patch: Partial<PlanInput>): Promise<PlanRecord | null>;
+  /** False when subscriptions still reference the plan. */
+  deletePlan(id: string): Promise<boolean>;
+
   createSubscription(input: {
     userId: string;
     planId: string;
@@ -163,6 +189,84 @@ const subscriptionWithPlan = { plan: true } as const;
 
 export class PrismaBillingStore implements BillingStore {
   constructor(private readonly prisma: PrismaClient) {}
+
+  async listPlans(): Promise<PlanRecord[]> {
+    const rows = await this.prisma.plan.findMany({ orderBy: { createdAt: "asc" } });
+    return rows.map((r) => ({
+      id: r.id,
+      kind: r.kind as "BOX" | "VENDOR",
+      title: r.title,
+      price: r.price,
+      periodDays: r.periodDays,
+      features: (r.features ?? {}) as Record<string, unknown>,
+    }));
+  }
+
+  async getPlan(id: string): Promise<PlanRecord | null> {
+    const row = await this.prisma.plan.findUnique({ where: { id } });
+    if (!row) return null;
+    return {
+      id: row.id,
+      kind: row.kind as "BOX" | "VENDOR",
+      title: row.title,
+      price: row.price,
+      periodDays: row.periodDays,
+      features: (row.features ?? {}) as Record<string, unknown>,
+    };
+  }
+
+  async createPlan(input: PlanInput): Promise<PlanRecord> {
+    const row = await this.prisma.plan.create({
+      data: {
+        kind: input.kind,
+        title: input.title,
+        price: input.price,
+        periodDays: input.periodDays,
+        features: input.features as Prisma.InputJsonValue,
+      },
+    });
+    return {
+      id: row.id,
+      kind: row.kind as "BOX" | "VENDOR",
+      title: row.title,
+      price: row.price,
+      periodDays: row.periodDays,
+      features: (row.features ?? {}) as Record<string, unknown>,
+    };
+  }
+
+  async updatePlan(id: string, patch: Partial<PlanInput>): Promise<PlanRecord | null> {
+    const row = await this.prisma.plan
+      .update({
+        where: { id },
+        data: {
+          ...(patch.kind ? { kind: patch.kind } : {}),
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.price !== undefined ? { price: patch.price } : {}),
+          ...(patch.periodDays !== undefined ? { periodDays: patch.periodDays } : {}),
+          ...(patch.features !== undefined
+            ? { features: patch.features as Prisma.InputJsonValue }
+            : {}),
+        },
+      })
+      .catch(() => null);
+    if (!row) return null;
+    return {
+      id: row.id,
+      kind: row.kind as "BOX" | "VENDOR",
+      title: row.title,
+      price: row.price,
+      periodDays: row.periodDays,
+      features: (row.features ?? {}) as Record<string, unknown>,
+    };
+  }
+
+  async deletePlan(id: string): Promise<boolean> {
+    const used = await this.prisma.subscription.count({ where: { planId: id } });
+    if (used > 0) return false;
+    const deleted = await this.prisma.plan.delete({ where: { id } }).catch(() => null);
+    return deleted !== null;
+  }
 
   async createSubscription(input: {
     userId: string;
@@ -383,12 +487,50 @@ export class PrismaBillingStore implements BillingStore {
 // ---------------------------------------------------------------------------
 
 export class MemoryBillingStore implements BillingStore {
+  private plans: PlanRecord[] = seedPlans.map((p) => ({
+    id: p.id,
+    kind: p.kind as "BOX" | "VENDOR",
+    title: p.title,
+    price: p.price,
+    periodDays: p.periodDays,
+    features: p.features as Record<string, unknown>,
+  }));
   private subscriptions: SubscriptionRecord[] = [];
   private boxDeliveries: BoxDeliveryRecord[] = [];
   private invoices: InvoiceRecord[] = [];
   private payouts: PayoutRecord[] = [];
   private auditLogs: AuditLogRecord[] = [];
   private seeded = false;
+
+  async listPlans(): Promise<PlanRecord[]> {
+    return this.plans.map((p) => ({ ...p, features: { ...p.features } }));
+  }
+
+  async getPlan(id: string): Promise<PlanRecord | null> {
+    const found = this.plans.find((p) => p.id === id);
+    return found ? { ...found, features: { ...found.features } } : null;
+  }
+
+  async createPlan(input: PlanInput): Promise<PlanRecord> {
+    const record: PlanRecord = { id: `plan-${crypto.randomUUID().slice(0, 8)}`, ...input };
+    this.plans.push(record);
+    return { ...record };
+  }
+
+  async updatePlan(id: string, patch: Partial<PlanInput>): Promise<PlanRecord | null> {
+    const found = this.plans.find((p) => p.id === id);
+    if (!found) return null;
+    Object.assign(found, patch);
+    return { ...found };
+  }
+
+  async deletePlan(id: string): Promise<boolean> {
+    if (this.subscriptions.some((s) => s.planId === id)) return false;
+    const index = this.plans.findIndex((p) => p.id === id);
+    if (index === -1) return false;
+    this.plans.splice(index, 1);
+    return true;
+  }
 
   /**
    * Mirrors prisma/seed.ts: the demo customer has an ACTIVE weekly

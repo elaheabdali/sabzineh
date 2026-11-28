@@ -12,6 +12,7 @@ import {
 } from "@sabzineh/types";
 import {
   createVendorProductAction,
+  generateProductDraftAction,
   updateVendorProductAction,
 } from "@/server/vendor/actions";
 import { formatPrice } from "@/lib/format";
@@ -178,13 +179,15 @@ export function ProductForm({ locale, categories, initial }: ProductFormProps) {
   const categoryLabel = categories.find((c) => c.id === categoryId)?.label ?? categoryId;
 
   /**
-   * Draft helper (Week 7): builds a description + tags from the title,
-   * category and attributes with a fixed template — no AI call. The
-   * vendor edits the draft before saving; nothing is auto-published.
+   * Draft helper: asks the server action, which uses the real AI
+   * client when AI_API_KEY is configured and falls back to the
+   * local template generator otherwise (Phase 4). If the action is
+   * unreachable, the local template runs directly. The vendor
+   * edits the draft before saving; nothing is auto-published.
    */
-  function generateDraft() {
+  async function generateDraft() {
     if (title.trim().length < 2) return;
-    const draft = generateProductDraft({
+    const input = {
       title,
       categoryName: categoryLabel,
       organic,
@@ -192,7 +195,9 @@ export function ProductForm({ locale, categories, initial }: ProductFormProps) {
       local,
       price: Number(price) || undefined,
       locale,
-    });
+    };
+    const fromServer = await generateProductDraftAction(input).catch(() => null);
+    const draft = fromServer ?? generateProductDraft(input);
     setDescription(draft.description);
     setTagsText(draft.tags.join("، "));
   }

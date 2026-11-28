@@ -1,8 +1,13 @@
-import { plans } from "@/data/seed";
+import { getBillingStore } from "./store";
 
 /**
- * Subscription plans (Week 6 wires enrolment + billing).
- * Week 1: read-only catalogue from seed data.
+ * Subscription plans.
+ *
+ * Phase 4: plans are DB-backed and admin-managed (the Plan table /
+ * billing store), replacing the Week 1 read-only seed catalogue.
+ * The seed only bootstraps the memory adapter and prisma/seed.ts.
+ * Lookups are async now; every caller already runs in an async
+ * context (server components, route handlers, billing services).
  */
 export type PlanKind = "BOX" | "VENDOR";
 
@@ -15,20 +20,30 @@ export interface PlanSummary {
   features: Record<string, unknown>;
 }
 
-export function listPlans(kind?: PlanKind): PlanSummary[] {
-  const all: PlanSummary[] = plans.map((p) => ({
+export async function listPlans(kind?: PlanKind): Promise<PlanSummary[]> {
+  const all = await getBillingStore().listPlans();
+  const summaries: PlanSummary[] = all.map((p) => ({
     id: p.id,
-    kind: p.kind as PlanKind,
+    kind: p.kind,
     title: p.title,
     price: p.price,
     periodDays: p.periodDays,
-    features: p.features as Record<string, unknown>,
+    features: p.features,
   }));
-  return kind ? all.filter((p) => p.kind === kind) : all;
+  return kind ? summaries.filter((p) => p.kind === kind) : summaries;
 }
 
-export function getPlanById(id: string): PlanSummary | undefined {
-  return listPlans().find((p) => p.id === id);
+export async function getPlanById(id: string): Promise<PlanSummary | undefined> {
+  const plan = await getBillingStore().getPlan(id);
+  if (!plan) return undefined;
+  return {
+    id: plan.id,
+    kind: plan.kind,
+    title: plan.title,
+    price: plan.price,
+    periodDays: plan.periodDays,
+    features: plan.features,
+  };
 }
 
 /** Commission rate for a vendor plan (0 for box plans). */

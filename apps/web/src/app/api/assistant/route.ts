@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (intent === "subscription") {
-    const plans = listPlans("BOX");
+    const plans = await listPlans("BOX");
     const lines = plans.map(
       (p) => `• ${p.title} — ${formatPrice(p.price, locale)} / ${p.periodDays} ${fa ? "روز" : "days"}`,
     );

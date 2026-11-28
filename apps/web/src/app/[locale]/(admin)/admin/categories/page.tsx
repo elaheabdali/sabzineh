@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { adminGuard } from "@/server/admin/page-guard";
 import { getCatalogRepository } from "@/features/catalog/repository";
 import { AdminNav } from "@/components/AdminNav";
+import { CategoryDragItem, CategoryRootDropZone } from "@/components/AdminCategoryTree";
 import {
   createCategoryAction,
   deleteCategoryAction,
@@ -102,15 +103,10 @@ export default async function AdminCategoriesPage({
         </button>
       </form>
 
+      <CategoryRootDropZone label={t("dropRootHint")} />
       <ul className="flex flex-col gap-2">
         {rows.map(({ node, depth }) => (
-          <li
-            key={node.id}
-            className="rounded-2xl border border-cream-200 bg-white p-4"
-            style={{ marginInlineStart: depth * 24 }}
-            data-testid="admin-category-row"
-            data-category-id={node.id}
-          >
+          <CategoryDragItem key={node.id} id={node.id} depth={depth}>
             <form action={updateCategoryAction} className="flex flex-wrap items-center gap-2 text-sm">
               <input type="hidden" name="id" value={node.id} />
               <span className="font-bold text-ink-900">
@@ -188,7 +184,7 @@ export default async function AdminCategoriesPage({
                 {t("deleteCategory")}
               </button>
             </form>
-          </li>
+          </CategoryDragItem>
         ))}
       </ul>
     </div>

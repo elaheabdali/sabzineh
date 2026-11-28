@@ -31,7 +31,7 @@ export default async function AccountSubscriptionPage({
   const t = await getTranslations("subscription");
   const tAccount = await getTranslations("account");
   const [plans, subscriptions, addresses, walletBalance] = await Promise.all([
-    Promise.resolve(listPlans("BOX")),
+    listPlans("BOX"),
     listMySubscriptions(session.id),
     getDataStore().listAddresses(session.id),
     getDataStore().getWalletBalance(session.id),

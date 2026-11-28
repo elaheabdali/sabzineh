@@ -10,20 +10,24 @@ import {
   buildOrdersCsv,
   buildPayoutsCsv,
   createBannerAsAdmin,
+  createPlanAsAdmin,
   createCategoryAsAdmin,
   createDiscountAsAdmin,
   deleteBannerAsAdmin,
+  deletePlanAsAdmin,
   deleteCategoryAsAdmin,
   deleteDiscountAsAdmin,
   getAdminReports,
   getAdminUserDetail,
   listAdminBanners,
+  listAdminPlans,
   listAdminProducts,
   listAdminUsers,
   rejectVendorAsAdmin,
   setProductStatusAsAdmin,
   setUserStatusAsAdmin,
   updateBannerAsAdmin,
+  updatePlanAsAdmin,
   updateCategoryAsAdmin,
   updateDiscountAsAdmin,
   validateDiscountInput,
@@ -351,5 +355,29 @@ describe("Phase 3 — admin products, banners, reports", () => {
     expect(ordersCsv.split("\n")[0]).toContain("user_email");
     const payoutsCsv = await buildPayoutsCsv();
     expect(payoutsCsv.split("\n")[0]).toContain("vendor_id");
+  });
+});
+
+describe("Phase 4 — admin plan management", () => {
+  it("creates, updates and deletes an unused plan; a used plan refuses deletion", async () => {
+    const before = await listAdminPlans();
+    expect(before.length).toBeGreaterThanOrEqual(4);
+    await createPlanAsAdmin(ADMIN, {
+      kind: "VENDOR",
+      title: "Phase 4 Test Plan",
+      price: 123_000,
+      periodDays: 30,
+      features: { commissionRate: 0.1, maxProducts: 50 },
+    });
+    const after = await listAdminPlans();
+    const created = after.find((p) => p.title === "Phase 4 Test Plan");
+    expect(created).toBeTruthy();
+    await updatePlanAsAdmin(ADMIN, created!.id, { price: 99_000 });
+    const updated = (await listAdminPlans()).find((p) => p.id === created!.id);
+    expect(updated?.price).toBe(99_000);
+    await deletePlanAsAdmin(ADMIN, created!.id);
+    expect((await listAdminPlans()).some((p) => p.id === created!.id)).toBe(false);
+    // A seeded plan with subscriptions cannot be deleted.
+    await expect(deletePlanAsAdmin(ADMIN, "plan-box-weekly")).rejects.toBeInstanceOf(AdminError);
   });
 });

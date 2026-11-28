@@ -12,7 +12,7 @@ import {
   type OrderRecord,
   type UserSummary,
 } from "@/server/store";
-import { getBillingStore } from "@/server/billing/store";
+import { getBillingStore, type PlanInput } from "@/server/billing/store";
 import { notifyUser } from "@/server/notifications";
 import {
   validateCategoryCreate,
@@ -602,6 +602,60 @@ export async function deleteBannerAsAdmin(adminId: string, id: string): Promise<
     actorId: adminId,
     action: "banner.delete",
     entity: "Banner",
+    entityId: id,
+    meta: {},
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Plan management (Phase 4)
+// ---------------------------------------------------------------------------
+
+export async function listAdminPlans() {
+  return getBillingStore().listPlans();
+}
+
+export async function createPlanAsAdmin(
+  adminId: string,
+  input: PlanInput,
+): Promise<void> {
+  if (!input.title.trim() || input.price < 0 || input.periodDays <= 0) {
+    throw new AdminError("invalid-input");
+  }
+  const created = await getBillingStore().createPlan({ ...input, title: input.title.trim() });
+  await getBillingStore().createAuditLog({
+    actorId: adminId,
+    action: "plan.create",
+    entity: "Plan",
+    entityId: created.id,
+    meta: { kind: created.kind, price: created.price },
+  });
+}
+
+export async function updatePlanAsAdmin(
+  adminId: string,
+  id: string,
+  patch: Partial<PlanInput>,
+): Promise<void> {
+  const updated = await getBillingStore().updatePlan(id, patch);
+  if (!updated) throw new AdminError("not-found");
+  await getBillingStore().createAuditLog({
+    actorId: adminId,
+    action: "plan.update",
+    entity: "Plan",
+    entityId: id,
+    meta: { price: updated.price, periodDays: updated.periodDays },
+  });
+}
+
+/** Deletes a plan only when no subscription references it. */
+export async function deletePlanAsAdmin(adminId: string, id: string): Promise<void> {
+  const deleted = await getBillingStore().deletePlan(id);
+  if (!deleted) throw new AdminError("in-use");
+  await getBillingStore().createAuditLog({
+    actorId: adminId,
+    action: "plan.delete",
+    entity: "Plan",
     entityId: id,
     meta: {},
   });
