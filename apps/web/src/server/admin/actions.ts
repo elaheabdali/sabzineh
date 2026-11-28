@@ -15,6 +15,8 @@ import {
   updateDiscountAsAdmin,
 } from "./service";
 import { approvePayout, markPayoutPaid, PayoutError } from "@/server/billing/payouts";
+import { OrderError, refundOrder } from "@/server/orders/service";
+import { getBillingStore } from "@/server/billing/store";
 
 /**
  * Admin server actions (Week 6).
@@ -227,6 +229,34 @@ export async function markPayoutPaidAction(formData: FormData): Promise<void> {
     await markPayoutPaid(session.id, payoutId);
   } catch (error) {
     console.error("markPayoutPaidAction failed", error);
+    return;
+  }
+  revalidateAdmin();
+}
+
+/**
+ * Phase 2: refund a PAID order (plain form action). The refund
+ * credits the customer's wallet, releases stock and restores the
+ * discount; the admin step is written to the audit log.
+ */
+export async function refundOrderAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const orderId = String(formData.get("orderId") ?? "");
+  try {
+    const order = await refundOrder(orderId);
+    await getBillingStore().createAuditLog({
+      actorId: session.id,
+      action: "order.refund",
+      entity: "Order",
+      entityId: order.id,
+      meta: { userId: order.userId, credited: order.walletApplied + order.payable },
+    });
+  } catch (error) {
+    if (error instanceof OrderError) {
+      console.error("refundOrderAction failed", error.code);
+    } else {
+      console.error("refundOrderAction failed", error);
+    }
     return;
   }
   revalidateAdmin();

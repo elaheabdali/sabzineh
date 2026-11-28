@@ -13,7 +13,7 @@ import { getCatalogRepository } from "@/features/catalog/repository";
 import { getDataStore, type VendorOrderItemRow } from "@/server/store";
 import { notifyUser } from "@/server/notifications";
 import { getBillingStore } from "@/server/billing/store";
-import { vendorProductLimit } from "@/server/billing/subscriptions";
+import { getVendorPlanInfo, vendorProductLimit } from "@/server/billing/subscriptions";
 import {
   AuthError,
   SESSION_TTL_MS,
@@ -46,7 +46,8 @@ export class VendorServiceError extends Error {
       | "invalid-input"
       | "invalid-transition"
       | "slug-taken"
-      | "product-limit",
+      | "product-limit"
+      | "no-active-subscription",
   ) {
     super(code);
     this.name = "VendorServiceError";
@@ -61,6 +62,21 @@ export const VENDOR_ORDER_TRANSITIONS: Record<string, VendorOrderStatus["toStatu
 };
 
 export const FULFILLED_ORDER_STATUSES = ["PAID", "PREPARING", "SHIPPED", "DELIVERED"];
+
+/**
+ * Publish gate (Phase 2, per the plan document): publishing needs
+ * an APPROVED vendor profile AND an active vendor subscription.
+ * Drafts are always allowed. Previously a vendor with no plan at
+ * all published on "basic terms", which the plan never intended —
+ * basic terms now only remain as the commission/cap fallback for
+ * orders and displays, never as a publish right.
+ */
+async function assertCanPublish(session: SessionUser, vendorId: string): Promise<void> {
+  const profile = await getVendorRepository().getVendorProfileByUserId(session.id);
+  if (profile?.status !== "APPROVED") throw new VendorServiceError("forbidden");
+  const info = await getVendorPlanInfo(vendorId);
+  if (!info) throw new VendorServiceError("no-active-subscription");
+}
 
 function requireVendorId(session: SessionUser): string {
   if (session.role !== "VENDOR" || !session.vendorId) {
@@ -135,13 +151,10 @@ export async function createVendorProduct(
   if (!category) throw new VendorServiceError("invalid-input");
   const status: VendorProductStatus = publish ? "PUBLISHED" : "DRAFT";
   if (publish) {
-    // A vendor whose registration is still PENDING (or rejected /
-    // suspended) may save drafts but cannot publish to the storefront.
-    const profile = await getVendorRepository().getVendorProfileByUserId(session.id);
-    if (profile?.status !== "APPROVED") throw new VendorServiceError("forbidden");
+    await assertCanPublish(session, vendorId);
   }
   // Product-count cap from the vendor's active plan (Week 6): basic
-  // 20, pro 200. Seed/demo vendors run on basic terms by default.
+  // 20, pro 200.
   const existing = await getVendorRepository().listVendorProducts(vendorId);
   const limit = await vendorProductLimit(vendorId);
   if (existing.length >= limit) throw new VendorServiceError("product-limit");
@@ -179,8 +192,7 @@ export async function setVendorProductStatus(
   const owned = await getVendorRepository().getVendorProduct(vendorId, id);
   if (!owned) throw new VendorServiceError("not-found");
   if (parsed.data === "PUBLISHED") {
-    const profile = await getVendorRepository().getVendorProfileByUserId(session.id);
-    if (profile?.status !== "APPROVED") throw new VendorServiceError("forbidden");
+    await assertCanPublish(session, vendorId);
   }
   const updated = await getVendorRepository().setVendorProductStatus(vendorId, id, parsed.data);
   if (!updated) throw new VendorServiceError("not-found");

@@ -38,7 +38,9 @@ export class OrderError extends Error {
       | "insufficient-wallet"
       | "order-not-found"
       | "not-your-order"
-      | "not-cancellable",
+      | "not-cancellable"
+      | "invalid-topup"
+      | "not-refundable",
   ) {
     super(code);
     this.name = "OrderError";
@@ -369,6 +371,98 @@ export async function resumePayment(
     paymentUrl: getPaymentPort().paymentUrlFor(payment.authority, locale),
     authority: payment.authority,
   };
+}
+
+export const MAX_WALLET_TOP_UP = 10_000_000;
+
+/**
+ * Phase 2: wallet top-up through the gateway. Until now the wallet
+ * could only be debited and refunded — there was no way to add
+ * money. A top-up is a zero-item order keyed `topup:<userId>:…`
+ * paid through the same gateway callback as checkout; when the
+ * payment verifies, settleOrderPaymentSideEffects credits the
+ * wallet (TOPUP). A failed or cancelled top-up credits nothing.
+ */
+export async function createWalletTopUp(
+  userId: string,
+  amount: number,
+  opts?: { locale?: string },
+): Promise<{ paymentUrl: string; authority: string }> {
+  if (!Number.isInteger(amount) || amount <= 0 || amount > MAX_WALLET_TOP_UP) {
+    throw new OrderError("invalid-topup");
+  }
+  const store = getDataStore();
+  const order = await store.createOrder({
+    userId,
+    items: [],
+    total: amount,
+    discountId: null,
+    discountAmount: 0,
+    walletApplied: 0,
+    payable: amount,
+    addressId: null,
+    idempotencyKey: `topup:${userId}:${crypto.randomUUID()}`,
+  });
+  const port = getPaymentPort();
+  const provider = port.provider === "zarinpal" ? "ZARINPAL" : "MOCK";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  let payment: Awaited<ReturnType<typeof port.createPayment>>;
+  try {
+    payment = await port.createPayment({
+      orderId: order.id,
+      amount,
+      description: `Sabzineh wallet top-up ${order.id}`,
+      callbackUrl: `${baseUrl}/api/payments/callback`,
+      locale: opts?.locale ?? "fa",
+    });
+  } catch (error) {
+    // Same orphan rule as checkout: no stuck PENDING top-up order.
+    await store.updateOrderStatus(order.id, "CANCELLED").catch(() => undefined);
+    throw error;
+  }
+  await store.createPayment({
+    orderId: order.id,
+    provider,
+    authority: payment.authority,
+    amount,
+    status: "PENDING",
+    refId: null,
+  });
+  return { paymentUrl: payment.paymentUrl, authority: payment.authority };
+}
+
+/**
+ * Phase 2: refund a PAID order (before fulfilment starts). The
+ * gateway part is credited back to the customer's wallet (the
+ * sandbox providers expose no refund API, and the wallet is where
+ * Sabzineh refunds settle), the wallet part returns as well, stock
+ * is released and the discount usage is restored. PREPARING and
+ * later states are a returns flow, not a refund — rejected here.
+ */
+export async function refundOrder(orderId: string): Promise<OrderRecord> {
+  const store = getDataStore();
+  const order = await store.getOrderById(orderId);
+  if (!order) throw new OrderError("order-not-found");
+  if (order.status !== "PAID") throw new OrderError("not-refundable");
+  const payment = await store.getPaymentByOrderId(orderId);
+  if (payment && payment.status === "PAID") {
+    await store.updatePayment(payment.id, { status: "REFUNDED" });
+  }
+  await store.updateOrderStatus(orderId, "REFUNDED");
+  if (order.discountId) {
+    await store.decrementDiscountUsed(order.discountId).catch(() => undefined);
+  }
+  const repo = getCatalogRepository();
+  for (const item of order.items) {
+    await repo.adjustStock(item.productId, item.qty).catch(() => undefined);
+  }
+  const credit = order.walletApplied + order.payable;
+  if (credit > 0) {
+    await store.applyWalletTransaction(order.userId, credit, "ORDER_REFUND", order.id);
+  }
+  await notifyUser(order.userId, "order-status", { orderId: order.id, status: "REFUNDED" });
+  const updated = await store.getOrderById(orderId);
+  return updated ?? order;
 }
 
 /** Order detail for its owner; vendors/admins use their own listings. */

@@ -18,17 +18,19 @@ import {
  *
  * Buyer box: a customer picks a BOX plan; the first weekly box order
  * is generated immediately (deterministic contents from PUBLISHED
- * products, priced at the plan price — the box costs the plan price,
- * the contents are shown at market value) and paid by wallet in full
+ * products; the plan price is allocated across the contents
+ * proportionally to market value, so item prices sum to the plan
+ * price) and paid by wallet in full
  * or through the gateway (Mock / Zarinpal sandbox) via the same
  * payment callback as checkout. Later weeks are generated per
  * delivery (generateWeeklyBox, idempotent on the week).
  *
  * Vendor plan: a vendor picks a VENDOR plan (basic / pro). The plan
  * sets the commission rate snapshotted on new orders and the
- * product-count cap. Without an active plan the vendor runs on basic
- * terms (0.12 commission, 20 products) — seed/demo vendors included,
- * so Week 5 flows keep working.
+ * product-count cap. Without an active plan the vendor cannot
+ * publish products at all (Phase 2, per the plan document); basic
+ * terms (0.12 commission, 20 products) remain only as the fallback
+ * for commission/cap lookups on existing data.
  *
  * Payment side effects (finalizePayment / failPaymentByAuthority in
  * server/orders/service.ts) call settleOrderPaymentSideEffects /
@@ -120,6 +122,25 @@ export interface BoxContentsLine {
   commissionRate: number;
 }
 
+/**
+ * Splits `total` across lines proportionally to their market prices.
+ * Every line gets floor(total × weight / weightSum); the rounding
+ * remainder goes to the largest line, so the parts always sum to
+ * exactly `total`. Zero-weight lines get 0 unless all weights are 0,
+ * in which case the total is split evenly.
+ */
+export function allocateBoxPrices(marketPrices: number[], total: number): number[] {
+  if (marketPrices.length === 0) return [];
+  const weightSum = marketPrices.reduce((a, b) => a + b, 0);
+  const weights = weightSum > 0 ? marketPrices : marketPrices.map(() => 1);
+  const effectiveSum = weightSum > 0 ? weightSum : marketPrices.length;
+  const parts = weights.map((w) => Math.floor((total * w) / effectiveSum));
+  const remainder = total - parts.reduce((a, b) => a + b, 0);
+  const largest = weights.indexOf(Math.max(...weights));
+  parts[largest] += remainder;
+  return parts;
+}
+
 /** Commission rate for a vendor's active plan (basic terms by default). */
 export async function commissionRateForVendor(vendorId: string): Promise<number> {
   const info = await getVendorPlanInfo(vendorId);
@@ -198,8 +219,9 @@ interface GeneratedBox {
 
 /**
  * Generates one weekly box for an ACTIVE box subscription: the
- * delivery row, the box order (contents at market prices, total =
- * plan price) and the invoice. Idempotent per week — a second call
+ * delivery row, the box order (plan price allocated across the
+ * contents, so the items sum to the order total) and the invoice.
+ * Idempotent per week — a second call
  * for the same week returns the existing rows. Stock is reserved
  * (1 per item); the caller releases it on cancel/failure.
  */
@@ -269,13 +291,23 @@ export async function generateWeeklyBox(
   }
 
   try {
+    // Phase 2 (box totals bug): the order total is the plan price,
+    // but items used to carry their full market prices, so the sum
+    // of items (what vendors are owed at payout) could exceed what
+    // the customer paid. Allocate the plan price across the items
+    // proportionally to market price (floor + remainder on the
+    // largest line) so sum(items) === order total === plan price.
+    const allocated = allocateBoxPrices(
+      contents.map((c) => c.price),
+      plan.price,
+    );
     const lines: BoxContentsLine[] = [];
-    for (const item of contents) {
+    for (const [index, item] of contents.entries()) {
       lines.push({
         productId: item.id,
         vendorId: item.vendorId,
         title: item.title,
-        unitPrice: item.price,
+        unitPrice: allocated[index],
         commissionRate: await commissionRateForVendor(item.vendorId),
       });
     }
@@ -602,6 +634,18 @@ export async function settleOrderPaymentSideEffects(order: OrderRecord): Promise
   try {
     const store = getBillingStore();
     const key = order.idempotencyKey;
+    if (key.startsWith("topup:")) {
+      // Phase 2: a verified wallet top-up credits the wallet once.
+      // finalizePayment only calls this on the PENDING → PAID
+      // transition, so a replayed callback cannot credit twice.
+      await getDataStore().applyWalletTransaction(
+        order.userId,
+        order.total,
+        "TOPUP",
+        order.id,
+      );
+      return;
+    }
     if (key.startsWith("box:")) {
       const delivery = await store.getBoxDeliveryByOrderId(order.id);
       if (!delivery) return;

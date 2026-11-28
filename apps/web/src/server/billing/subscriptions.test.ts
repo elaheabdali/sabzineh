@@ -5,6 +5,7 @@ import { getDataStore } from "@/server/store";
 import { getBillingStore } from "./store";
 import { finalizePayment } from "@/server/orders/service";
 import {
+  allocateBoxPrices,
   cancelSubscription,
   commissionRateForVendor,
   generateWeeklyBox,
@@ -236,5 +237,48 @@ describe("vendor plans", () => {
     await expect(
       subscribeToVendorPlan(user.id, "plan-vendor-basic", "wallet"),
     ).rejects.toMatchObject({ code: "forbidden" });
+  });
+});
+
+describe("Phase 2 — box price allocation", () => {
+  it("allocateBoxPrices sums exactly to the total and stays proportional", () => {
+    const parts = allocateBoxPrices([90_000, 65_000, 135_000], 290_000);
+    expect(parts.reduce((a, b) => a + b, 0)).toBe(290_000);
+    expect(parts).toEqual([90_000, 65_000, 135_000]);
+    const scaled = allocateBoxPrices([90_000, 65_000, 135_000], 100_000);
+    expect(scaled.reduce((a, b) => a + b, 0)).toBe(100_000);
+    expect(scaled[2]).toBeGreaterThan(scaled[0]);
+    expect(scaled[0]).toBeGreaterThan(scaled[1]);
+    expect(allocateBoxPrices([], 100_000)).toEqual([]);
+    expect(allocateBoxPrices([0, 0], 100)).toEqual([50, 50]);
+  });
+
+  it("a generated box order's items sum to its total (the plan price)", async () => {
+    const { user } = await makeCustomerWithAddress(2_000_000);
+    const result = await subscribeToBox(user.id, "plan-box-weekly", "wallet");
+    const itemsSum = result.order.items.reduce((a, i) => a + i.unitPrice * i.qty, 0);
+    expect(itemsSum).toBe(result.order.total);
+  });
+});
+
+describe("Phase 2 — subscription expiry", () => {
+  it("an ACTIVE subscription past currentPeriodEnd is expired on read", async () => {
+    const { user, vendorId } = await makeVendor();
+    await getDataStore().applyWalletTransaction(user.id, 1_000_000, "TEST_TOPUP", "test");
+    const result = await subscribeToVendorPlan(user.id, "plan-vendor-pro", "wallet");
+    expect(await commissionRateForVendor(vendorId)).toBe(0.08);
+    const store = getBillingStore();
+    await store.updateSubscription(result.subscription!.id, {
+      currentPeriodEnd: new Date(Date.now() - 60_000),
+    });
+    // Expired: no active subscription, pro terms are gone, and the
+    // stored status flipped to EXPIRED.
+    expect(await store.getActiveSubscription(user.id, "VENDOR")).toBeNull();
+    expect(await commissionRateForVendor(vendorId)).toBe(0.12);
+    const stored = await store.getSubscriptionById(result.subscription!.id);
+    expect(stored?.status).toBe("EXPIRED");
+    // And the vendor may subscribe again after expiry.
+    const renewed = await subscribeToVendorPlan(user.id, "plan-vendor-basic", "wallet");
+    expect(renewed.subscription?.status).toBe("ACTIVE");
   });
 });

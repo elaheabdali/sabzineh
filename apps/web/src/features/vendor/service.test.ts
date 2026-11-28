@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   VendorProductInputSchema,
   VendorProductStep1Schema,
@@ -23,6 +23,24 @@ import {
   updateVendorProfile,
 } from "./service";
 import { getVendorRepository } from "./repository";
+import { getBillingStore } from "@/server/billing/store";
+import { approveVendorAsAdmin } from "@/server/admin/service";
+
+// Phase 2: publishing requires an active vendor subscription, so
+// the seed vendors used across this file hold a basic plan.
+beforeAll(async () => {
+  const store = getBillingStore();
+  for (const userId of ["u-vendor", "u-vendor-2"]) {
+    await store.createSubscription({
+      userId,
+      planId: "plan-vendor-basic",
+      planKind: "VENDOR",
+      status: "ACTIVE",
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      autoRenew: true,
+    });
+  }
+});
 
 const VENDOR_V01: SessionUser = {
   id: "u-vendor",
@@ -333,6 +351,29 @@ describe("vendor profile + registration", () => {
     expect(draft.status).toBe("DRAFT");
     await expect(setVendorProductStatus(session, draft.id, "PUBLISHED")).rejects.toMatchObject({
       code: "forbidden",
+    });
+  });
+
+  it("Phase 2: an APPROVED vendor without an active subscription cannot publish", async () => {
+    const email = `nosub-${crypto.randomUUID()}@sabzineh.ir`;
+    const { user, vendorId } = await registerVendor({
+      name: "No Sub Vendor",
+      email,
+      phone: "09123456789",
+      password: "secret123",
+      shopName: "No Sub Shop",
+      city: "تهران",
+    });
+    await approveVendorAsAdmin("u-admin", vendorId);
+    const session: SessionUser = { ...user, vendorId };
+    // Drafts still work; publishing does not.
+    const draft = await createVendorProduct(session, validInput(), false);
+    expect(draft.status).toBe("DRAFT");
+    await expect(createVendorProduct(session, validInput(), true)).rejects.toMatchObject({
+      code: "no-active-subscription",
+    });
+    await expect(setVendorProductStatus(session, draft.id, "PUBLISHED")).rejects.toMatchObject({
+      code: "no-active-subscription",
     });
   });
 
