@@ -8,6 +8,7 @@ import {
 import { updateVendorOrderStatusAction } from "@/server/vendor/actions";
 import { formatJalali, formatPrice } from "@/lib/format";
 import { VendorNav } from "@/components/VendorNav";
+import { VendorSalesChart } from "@/components/VendorSalesChart";
 import { VendorForbidden } from "@/components/VendorForbidden";
 import type { Locale } from "@/i18n/routing";
 
@@ -95,6 +96,8 @@ export default async function VendorDashboardPage({
           </p>
         </div>
       </div>
+
+      <VendorSalesChart data={data.dailySales} locale={locale} label={t("dailySales")} />
 
       <section>
         <h2 className="text-lg font-bold text-ink-900">{t("topProducts")}</h2>

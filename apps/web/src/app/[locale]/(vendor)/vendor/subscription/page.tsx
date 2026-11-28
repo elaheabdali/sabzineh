@@ -40,7 +40,7 @@ export default async function VendorSubscriptionPage({
   if (!session.vendorId) return <VendorForbidden />;
   const vendorId = session.vendorId;
   const [plans, planInfo, payouts, dashboard, walletBalance] = await Promise.all([
-    Promise.resolve(listPlans("VENDOR")),
+    listPlans("VENDOR"),
     getVendorPlanInfo(vendorId),
     listPayoutsForVendor(vendorId),
     getVendorDashboard(session),
