@@ -1,19 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { registerCustomer, loginWithCredentials } from "@/lib/auth/service";
 import { registerVendor } from "@/features/vendor/service";
+import { getVendorRepository } from "@/features/vendor/repository";
 import { getDataStore } from "@/server/store";
 import { createOrder } from "@/server/orders/service";
 import {
   AdminError,
   approveVendorAsAdmin,
+  buildOrdersCsv,
+  buildPayoutsCsv,
+  createBannerAsAdmin,
   createCategoryAsAdmin,
   createDiscountAsAdmin,
+  deleteBannerAsAdmin,
   deleteCategoryAsAdmin,
   deleteDiscountAsAdmin,
+  getAdminReports,
   getAdminUserDetail,
+  listAdminBanners,
+  listAdminProducts,
   listAdminUsers,
   rejectVendorAsAdmin,
+  setProductStatusAsAdmin,
   setUserStatusAsAdmin,
+  updateBannerAsAdmin,
   updateCategoryAsAdmin,
   updateDiscountAsAdmin,
   validateDiscountInput,
@@ -285,5 +295,61 @@ describe("category admin", () => {
     await expect(
       updateCategoryAsAdmin(ADMIN, root.id, { parentId: child.id }),
     ).rejects.toMatchObject({ code: "cycle" });
+  });
+});
+
+describe("Phase 3 — admin products, banners, reports", () => {
+  it("lists products with search, status filter, sort and pagination", async () => {
+    const all = await listAdminProducts({ pageSize: 5 });
+    expect(all.total).toBeGreaterThan(50);
+    expect(all.rows).toHaveLength(5);
+    const drafts = await listAdminProducts({ status: "DRAFT" });
+    expect(drafts.rows.every((r) => r.status === "DRAFT")).toBe(true);
+    const byPriceDesc = await listAdminProducts({ sort: "price", dir: "desc", pageSize: 50 });
+    const prices = byPriceDesc.rows.map((r) => r.price);
+    expect(prices).toEqual([...prices].sort((a, b) => b - a));
+    expect(byPriceDesc.rows[0].shopName).toBeTruthy();
+  });
+
+  it("admin can archive and restore a product, audit-logged", async () => {
+    await setProductStatusAsAdmin(ADMIN, P001, "ARCHIVED");
+    const archived = await listAdminProducts({ status: "ARCHIVED", pageSize: 50 });
+    expect(archived.rows.some((r) => r.id === P001)).toBe(true);
+    await setProductStatusAsAdmin(ADMIN, P001, "PUBLISHED");
+    const detail = await getVendorRepository().getVendorProduct("v01", P001);
+    expect(detail?.status).toBe("PUBLISHED");
+    await expect(setProductStatusAsAdmin(ADMIN, "no-such-product", "ARCHIVED")).rejects.toBeInstanceOf(
+      AdminError,
+    );
+  });
+
+  it("banner CRUD round-trips through the store", async () => {
+    const before = await listAdminBanners();
+    await createBannerAsAdmin(ADMIN, {
+      title: "Phase 3 test banner",
+      imageUrl: "https://example.com/b.png",
+      linkUrl: "/fa/subscribe",
+      placement: "HOME_STRIP",
+      active: true,
+    });
+    const after = await listAdminBanners();
+    expect(after).toHaveLength(before.length + 1);
+    const created = after.find((b) => b.title === "Phase 3 test banner");
+    expect(created).toBeTruthy();
+    await updateBannerAsAdmin(ADMIN, created!.id, { active: false });
+    const updated = (await listAdminBanners()).find((b) => b.id === created!.id);
+    expect(updated?.active).toBe(false);
+    await deleteBannerAsAdmin(ADMIN, created!.id);
+    expect((await listAdminBanners()).some((b) => b.id === created!.id)).toBe(false);
+  });
+
+  it("reports aggregate orders and CSV exports have headers and rows", async () => {
+    const reports = await getAdminReports();
+    expect(reports.revenue).toBeGreaterThanOrEqual(0);
+    expect(Array.isArray(reports.topVendors)).toBe(true);
+    const ordersCsv = await buildOrdersCsv();
+    expect(ordersCsv.split("\n")[0]).toContain("user_email");
+    const payoutsCsv = await buildPayoutsCsv();
+    expect(payoutsCsv.split("\n")[0]).toContain("vendor_id");
   });
 });

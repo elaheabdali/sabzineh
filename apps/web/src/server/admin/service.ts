@@ -5,6 +5,7 @@ import { getUserStore, getSessionStore } from "@/lib/auth/store";
 import {
   getDataStore,
   type AdminStats,
+  type BannerInput,
   type DiscountInput,
   type DiscountRecord,
   type OrderFilters,
@@ -468,4 +469,242 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
 
 export async function listAuditLogs(limit = 50) {
   return getBillingStore().listAuditLogs(limit);
+}
+
+// ---------------------------------------------------------------------------
+// Product moderation (Phase 3)
+// ---------------------------------------------------------------------------
+
+export type AdminProductSort = "title" | "price" | "stock";
+
+export interface AdminProductRow {
+  id: string;
+  title: string;
+  vendorId: string;
+  shopName: string | null;
+  price: number;
+  stock: number;
+  status: string;
+}
+
+export interface AdminProductList {
+  rows: AdminProductRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Every product in the marketplace with server-side filter, sort
+ * and pagination (the admin products table is URL-driven, like the
+ * users page). Sorting happens here so the DataTable stays a pure
+ * display component.
+ */
+export async function listAdminProducts(params?: {
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  q?: string;
+  sort?: AdminProductSort;
+  dir?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}): Promise<AdminProductList> {
+  const repo = getVendorRepository();
+  const products = await repo.listAllProducts({ status: params?.status, q: params?.q });
+  const profiles = new Map<string, string>();
+  for (const p of products) {
+    if (!profiles.has(p.vendorId)) {
+      const profile = await repo.getVendorProfileById(p.vendorId);
+      profiles.set(p.vendorId, profile?.shopName ?? p.vendorId);
+    }
+  }
+  const sort = params?.sort ?? "title";
+  const factor = params?.dir === "desc" ? -1 : 1;
+  const sorted = [...products].sort((a, b) => {
+    if (sort === "price") return (a.price - b.price) * factor;
+    if (sort === "stock") return (a.stock - b.stock) * factor;
+    return a.title.localeCompare(b.title) * factor;
+  });
+  const pageSize = Math.min(50, Math.max(1, params?.pageSize ?? 10));
+  const total = sorted.length;
+  const page = Math.min(Math.max(1, params?.page ?? 1), Math.max(1, Math.ceil(total / pageSize)));
+  const rows = sorted.slice((page - 1) * pageSize, page * pageSize).map((p) => ({
+    id: p.id,
+    title: p.title,
+    vendorId: p.vendorId,
+    shopName: profiles.get(p.vendorId) ?? null,
+    price: p.price,
+    stock: p.stock,
+    status: p.status,
+  }));
+  return { rows, total, page, pageSize };
+}
+
+/** Admin sets a product's status (approve / archive / restore), audit-logged. */
+export async function setProductStatusAsAdmin(
+  adminId: string,
+  productId: string,
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
+): Promise<void> {
+  const updated = await getVendorRepository().setProductStatusAsAdmin(productId, status);
+  if (!updated) throw new AdminError("not-found");
+  await getBillingStore().createAuditLog({
+    actorId: adminId,
+    action: "product.status",
+    entity: "Product",
+    entityId: productId,
+    meta: { status, vendorId: updated.vendorId },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Banner management (Phase 3)
+// ---------------------------------------------------------------------------
+
+export async function listAdminBanners() {
+  return getDataStore().listBanners();
+}
+
+export async function createBannerAsAdmin(
+  adminId: string,
+  input: BannerInput,
+): Promise<void> {
+  if (!input.title.trim()) throw new AdminError("invalid-input");
+  const created = await getDataStore().createBanner({ ...input, title: input.title.trim() });
+  await getBillingStore().createAuditLog({
+    actorId: adminId,
+    action: "banner.create",
+    entity: "Banner",
+    entityId: created.id,
+    meta: { placement: created.placement },
+  });
+}
+
+export async function updateBannerAsAdmin(
+  adminId: string,
+  id: string,
+  patch: Partial<BannerInput>,
+): Promise<void> {
+  const updated = await getDataStore().updateBanner(id, patch);
+  if (!updated) throw new AdminError("not-found");
+  await getBillingStore().createAuditLog({
+    actorId: adminId,
+    action: "banner.update",
+    entity: "Banner",
+    entityId: id,
+    meta: { placement: updated.placement, active: updated.active },
+  });
+}
+
+export async function deleteBannerAsAdmin(adminId: string, id: string): Promise<void> {
+  const deleted = await getDataStore().deleteBanner(id);
+  if (!deleted) throw new AdminError("not-found");
+  await getBillingStore().createAuditLog({
+    actorId: adminId,
+    action: "banner.delete",
+    entity: "Banner",
+    entityId: id,
+    meta: {},
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Reports + CSV (Phase 3)
+// ---------------------------------------------------------------------------
+
+export interface AdminReports {
+  revenue: number;
+  ordersByStatus: Record<string, number>;
+  payouts: { requested: number; approved: number; paid: number; paidNet: number };
+  topVendors: { vendorId: string; shopName: string | null; gross: number }[];
+}
+
+/** Aggregate money/status report for the admin reports page. */
+export async function getAdminReports(): Promise<AdminReports> {
+  const store = getDataStore();
+  const orders = await store.listAllOrders();
+  const ordersByStatus: Record<string, number> = {};
+  let revenue = 0;
+  for (const order of orders) {
+    ordersByStatus[order.status] = (ordersByStatus[order.status] ?? 0) + 1;
+    if (order.status === "PAID" || order.status === "PREPARING" || order.status === "SHIPPED" || order.status === "DELIVERED") {
+      revenue += order.total - order.discountAmount;
+    }
+  }
+  const payouts = await getBillingStore().listPayouts();
+  const payoutSummary = { requested: 0, approved: 0, paid: 0, paidNet: 0 };
+  for (const p of payouts) {
+    if (p.status === "REQUESTED") payoutSummary.requested += 1;
+    if (p.status === "APPROVED") payoutSummary.approved += 1;
+    if (p.status === "PAID") {
+      payoutSummary.paid += 1;
+      payoutSummary.paidNet += p.net;
+    }
+  }
+  const repo = getVendorRepository();
+  const grossByVendor = new Map<string, number>();
+  for (const order of orders) {
+    if (order.status === "CANCELLED" || order.status === "PENDING" || order.status === "REFUNDED") continue;
+    for (const item of order.items) {
+      grossByVendor.set(item.vendorId, (grossByVendor.get(item.vendorId) ?? 0) + item.unitPrice * item.qty);
+    }
+  }
+  const topVendors: AdminReports["topVendors"] = [];
+  for (const [vendorId, gross] of [...grossByVendor.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    const profile = await repo.getVendorProfileById(vendorId);
+    topVendors.push({ vendorId, shopName: profile?.shopName ?? null, gross });
+  }
+  return { revenue, ordersByStatus, payouts: payoutSummary, topVendors };
+}
+
+function csvCell(value: string | number): string {
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** Orders as CSV (one row per order) for the admin export route. */
+export async function buildOrdersCsv(): Promise<string> {
+  const rows = await listAdminOrders();
+  const lines = ["id,user_email,status,total,discount,wallet_applied,payable,items,created_at"];
+  for (const { order, userEmail } of rows) {
+    lines.push(
+      [
+        order.id,
+        userEmail ?? "",
+        order.status,
+        order.total,
+        order.discountAmount,
+        order.walletApplied,
+        order.payable,
+        order.items.length,
+        order.createdAt.toISOString(),
+      ]
+        .map(csvCell)
+        .join(","),
+    );
+  }
+  return lines.join("\n");
+}
+
+/** Payouts as CSV for the admin export route. */
+export async function buildPayoutsCsv(): Promise<string> {
+  const payouts = await getBillingStore().listPayouts();
+  const lines = ["id,vendor_id,status,gross,commission,net,period_start,period_end,created_at"];
+  for (const p of payouts) {
+    lines.push(
+      [
+        p.id,
+        p.vendorId,
+        p.status,
+        p.gross,
+        p.commission,
+        p.net,
+        p.periodStart.toISOString(),
+        p.periodEnd.toISOString(),
+        p.createdAt.toISOString(),
+      ]
+        .map(csvCell)
+        .join(","),
+    );
+  }
+  return lines.join("\n");
 }
