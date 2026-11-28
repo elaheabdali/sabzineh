@@ -139,6 +139,11 @@ export async function createOrder(
   const store = getDataStore();
   const existing = await store.getOrderByIdempotencyKey(input.idempotencyKey);
   if (existing) {
+    // Phase 1 (security): an idempotency key replays ONLY for its
+    // owner. Without this check, any signed-in user who learned
+    // another user's key received that user's order id and a live
+    // payment URL for their pending payment.
+    if (existing.userId !== userId) throw new OrderError("not-your-order");
     const payment = await store.getPaymentByOrderId(existing.id);
     if (payment?.status === "PENDING" && payment.authority && existing.payable > 0) {
       const port = getPaymentPort();
@@ -176,6 +181,7 @@ export async function createOrder(
     throw error;
   }
 
+  let createdOrder: OrderRecord | null = null;
   try {
     // Commission per vendor, from the vendor's active plan at order
     // time (Week 6): pro vendors pay 0.08, everyone else 0.12.
@@ -202,6 +208,7 @@ export async function createOrder(
       addressId: input.addressId,
       idempotencyKey: input.idempotencyKey,
     });
+    createdOrder = order;
 
     if (money.payable === 0) {
       await store.createPayment({
@@ -235,8 +242,21 @@ export async function createOrder(
     });
     return { order, created: true, paymentUrl: payment.paymentUrl, authority: payment.authority };
   } catch (error) {
-    // Order creation failed after reservation — release the stock.
-    for (const r of reserved) await repo.adjustStock(r.productId, r.qty).catch(() => undefined);
+    if (createdOrder) {
+      // Phase 1 (money bug): the order was already committed — the
+      // wallet was debited and the discount consumed inside
+      // store.createOrder — and only then did gateway payment
+      // creation fail. Compensate through the shared settle path:
+      // it cancels the order, releases the reserved stock, refunds
+      // the wallet debit and restores the discount. (Previously the
+      // order stayed PENDING forever, the wallet kept the debit and
+      // no payment existed to resume.) Do NOT also release stock
+      // here — settleFailedPayment already does it.
+      await settleFailedPayment(createdOrder.id).catch(() => undefined);
+    } else {
+      // Order creation failed after reservation — release the stock.
+      for (const r of reserved) await repo.adjustStock(r.productId, r.qty).catch(() => undefined);
+    }
     throw error;
   }
 }
@@ -281,6 +301,12 @@ async function settleFailedPayment(orderId: string): Promise<void> {
     await store.updatePayment(payment.id, { status: "FAILED" });
   }
   await store.updateOrderStatus(orderId, "CANCELLED");
+  // Phase 1: a cancelled/failed order must not burn the discount —
+  // restore the global usage counter (the per-user count now also
+  // ignores CANCELLED orders in the store adapters).
+  if (order.discountId) {
+    await store.decrementDiscountUsed(order.discountId).catch(() => undefined);
+  }
   // Week 7: the customer hears about the cancellation live.
   await notifyUser(order.userId, "order-status", { orderId: order.id, status: "CANCELLED" });
   const repo = getCatalogRepository();

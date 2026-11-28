@@ -148,6 +148,8 @@ export interface DataStore {
   getDiscountByCode(code: string): Promise<DiscountRecord | null>;
   countDiscountUseByUser(discountId: string, userId: string): Promise<number>;
   incrementDiscountUsed(discountId: string): Promise<void>;
+  /** Phase 1: give a consumed discount back when its order is cancelled/failed. Never goes below zero. */
+  decrementDiscountUsed(discountId: string): Promise<void>;
   getWalletBalance(userId: string): Promise<number>;
   /** Applies a signed wallet movement; throws on insufficient funds for a debit. Returns the new balance. */
   applyWalletTransaction(userId: string, amount: number, refType: string, refId: string): Promise<number>;
@@ -287,13 +289,24 @@ export class PrismaDataStore implements DataStore {
   }
 
   async countDiscountUseByUser(discountId: string, userId: string): Promise<number> {
-    return this.prisma.order.count({ where: { userId, discountId } });
+    // Cancelled orders do not count as a use (Phase 1): a failed or
+    // cancelled checkout must not burn the customer's one-time code.
+    return this.prisma.order.count({
+      where: { userId, discountId, status: { not: "CANCELLED" } },
+    });
   }
 
   async incrementDiscountUsed(discountId: string): Promise<void> {
     await this.prisma.discount.update({
       where: { id: discountId },
       data: { usedCount: { increment: 1 } },
+    });
+  }
+
+  async decrementDiscountUsed(discountId: string): Promise<void> {
+    await this.prisma.discount.updateMany({
+      where: { id: discountId, usedCount: { gt: 0 } },
+      data: { usedCount: { decrement: 1 } },
     });
   }
 
@@ -662,12 +675,20 @@ export class MemoryDataStore implements DataStore {
   }
 
   async countDiscountUseByUser(discountId: string, userId: string): Promise<number> {
-    return this.orders.filter((o) => o.userId === userId && o.discountId === discountId).length;
+    // Cancelled orders do not count as a use (Phase 1, mirrors Prisma).
+    return this.orders.filter(
+      (o) => o.userId === userId && o.discountId === discountId && o.status !== "CANCELLED",
+    ).length;
   }
 
   async incrementDiscountUsed(discountId: string): Promise<void> {
     const found = this.discounts.find((d) => d.id === discountId);
     if (found) found.usedCount += 1;
+  }
+
+  async decrementDiscountUsed(discountId: string): Promise<void> {
+    const found = this.discounts.find((d) => d.id === discountId);
+    if (found && found.usedCount > 0) found.usedCount -= 1;
   }
 
   async getWalletBalance(userId: string): Promise<number> {

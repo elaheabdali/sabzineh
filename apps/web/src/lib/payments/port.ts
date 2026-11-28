@@ -2,7 +2,13 @@
  * PaymentPort — the only payment boundary in the app.
  * Business code never imports a gateway directly; it calls
  * `getPaymentPort()`, which selects the implementation from
- * PAYMENT_PROVIDER ("mock" default, "zarinpal" sandbox).
+ * PAYMENT_PROVIDER ("mock" for local dev/tests, "zarinpal" sandbox).
+ *
+ * Phase 1 (security): mock is a dev-only default. In production an
+ * unset PAYMENT_PROVIDER is a configuration error, not a silent
+ * fall-back to a fake gateway whose payments anyone could forge.
+ * A production demo that deliberately wants the mock must say so
+ * explicitly with PAYMENT_PROVIDER=mock.
  */
 import { MockPaymentPort } from "./mock";
 import { ZarinpalPaymentPort } from "./zarinpal";
@@ -51,10 +57,16 @@ export class PaymentConfigurationError extends Error {
 }
 
 export function getPaymentPort(): PaymentPort {
-  const provider = process.env.PAYMENT_PROVIDER ?? "mock";
+  const provider = process.env.PAYMENT_PROVIDER;
   if (provider === "zarinpal") return new ZarinpalPaymentPort();
-  if (provider !== "mock") {
+  if (provider === "mock") return new MockPaymentPort();
+  if (provider !== undefined) {
     throw new PaymentConfigurationError(`Unknown PAYMENT_PROVIDER: ${provider}`);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new PaymentConfigurationError(
+      "PAYMENT_PROVIDER is not set. Refusing to default to the mock gateway in production; set PAYMENT_PROVIDER=zarinpal (or =mock only for a deliberate demo).",
+    );
   }
   return new MockPaymentPort();
 }

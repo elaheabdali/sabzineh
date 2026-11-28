@@ -6,9 +6,15 @@ import type {
 } from "./port";
 
 /**
- * Mock gateway: no network, deterministic. Used for local development
- * and tests. The authority is stable per order so a double-submit
- * replays the same payment instead of charging twice.
+ * Mock gateway: no network. Used for local development and tests.
+ *
+ * Phase 1 (security): the authority is a random UUID, NOT derived
+ * from the order id. It used to be `MOCK-<orderId>` — guessable by
+ * anyone who learned an order id, and verify() accepted any such
+ * authority, so a stranger could mark someone else's order PAID (or
+ * cancel it) for free. The authority is now an unguessable bearer
+ * credential, stored on the Payment row; idempotent replays read it
+ * back from there instead of recomputing it.
  */
 export class MockPaymentPort implements PaymentPort {
   readonly provider = "mock" as const;
@@ -18,7 +24,7 @@ export class MockPaymentPort implements PaymentPort {
   }
 
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
-    const authority = `MOCK-${input.orderId}`;
+    const authority = `MOCK-${crypto.randomUUID()}`;
     return {
       authority,
       paymentUrl: this.paymentUrlFor(authority, input.locale ?? "fa"),
