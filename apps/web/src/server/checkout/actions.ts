@@ -9,6 +9,7 @@ import {
   cancelOrder,
   computeCheckout,
   createOrder,
+  createWalletTopUp,
   resumePayment,
 } from "@/server/orders/service";
 import {
@@ -135,6 +136,21 @@ export async function resumePaymentAction(
     const resumed = await resumePayment(session.id, orderId, locale);
     if (!resumed) return { ok: false, error: "not-payable" };
     return { ok: true, paymentUrl: resumed.paymentUrl };
+  } catch (error) {
+    if (error instanceof OrderError) return { ok: false, error: error.code };
+    return { ok: false, error: "unknown" };
+  }
+}
+
+/** Phase 2: start a wallet top-up through the gateway. */
+export async function walletTopUpAction(
+  amount: number,
+  locale: string,
+): Promise<{ ok: boolean; paymentUrl?: string; error?: string }> {
+  const session = await requireSession();
+  try {
+    const topUp = await createWalletTopUp(session.id, amount, { locale });
+    return { ok: true, paymentUrl: topUp.paymentUrl };
   } catch (error) {
     if (error instanceof OrderError) return { ok: false, error: error.code };
     return { ok: false, error: "unknown" };

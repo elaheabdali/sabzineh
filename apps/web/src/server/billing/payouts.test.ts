@@ -110,17 +110,38 @@ describe("payout lifecycle", () => {
     expect(queue.some((p) => p.id === requested.id && p.status === "PAID")).toBe(true);
   });
 
-  it("a paid period can be requested again, an empty period cannot", async () => {
+  it("a paid period cannot be paid twice, and an empty period cannot be requested", async () => {
     const session = vendorSession("v03");
-    // The v03 delivered order from the previous test still counts:
-    // a new payout for the same window recomputes the same totals.
-    const second = await requestPayout(session, WIDE_START, WIDE_END);
-    expect(second.status).toBe("REQUESTED");
-    expect(second.net).toBe(118_800);
+    // Phase 2: this test previously asserted the double-count bug —
+    // it expected the already-PAID v03 items to be payable again for
+    // the same window. Items covered by an existing payout are now
+    // excluded, so the same window has nothing left to pay.
+    await expect(requestPayout(session, WIDE_START, WIDE_END)).rejects.toMatchObject({
+      code: "nothing-to-pay",
+    });
+    const preview = await computePayout("v03", WIDE_START, WIDE_END);
+    expect(preview.net).toBe(0);
+    expect(preview.itemCount).toBe(0);
 
     await expect(
       requestPayout(session, new Date("2020-01-01"), new Date("2020-12-31")),
     ).rejects.toMatchObject({ code: "nothing-to-pay" });
+  });
+
+  it("a shifted window does not resurrect items claimed by an earlier payout", async () => {
+    // v01's delivered items were previewed in the computePayout
+    // describe but never claimed; claim them, then re-check with a
+    // different (overlapping) window.
+    const session = vendorSession("v01");
+    const claimed = await requestPayout(session, WIDE_START, WIDE_END);
+    expect(claimed.net).toBe(158_400);
+    const shifted = await computePayout(
+      "v01",
+      new Date("2019-01-01"),
+      new Date("2101-01-01"),
+    );
+    expect(shifted.net).toBe(0);
+    expect(shifted.itemCount).toBe(0);
   });
 
   it("only vendors can request, and unknown payouts are not found", async () => {

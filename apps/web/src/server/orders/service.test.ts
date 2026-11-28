@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { registerCustomer } from "@/lib/auth/service";
 import { getCatalogRepository } from "@/features/catalog/repository";
 import { getDataStore } from "@/server/store";
 import {
   cancelOrder,
   computeCheckout,
   createOrder,
+  createWalletTopUp,
   failPaymentByAuthority,
   finalizePayment,
   OrderError,
+  refundOrder,
   validateDiscountCode,
 } from "./service";
 
@@ -246,5 +249,73 @@ describe("Phase 1 — idempotency ownership + gateway-failure compensation", () 
     expect(discountAfter?.usedCount).toBe(discountBefore?.usedCount);
     const revalidated = await validateDiscountCode("SABZ10", CUSTOMER, 300_000);
     expect(revalidated.ok).toBe(true);
+  });
+});
+
+describe("Phase 2 — wallet top-up + PAID refund", () => {
+  it("a verified top-up credits the wallet exactly once", async () => {
+    const before = await getDataStore().getWalletBalance(CUSTOMER);
+    const topUp = await createWalletTopUp(CUSTOMER, 50_000);
+    expect(topUp.paymentUrl).toContain("/payment/mock");
+    // Not credited before the gateway verifies.
+    expect(await getDataStore().getWalletBalance(CUSTOMER)).toBe(before);
+    const order = await finalizePayment(topUp.authority);
+    expect(order.status).toBe("PAID");
+    expect(await getDataStore().getWalletBalance(CUSTOMER)).toBe(before + 50_000);
+    // Replaying the callback does not credit twice.
+    await finalizePayment(topUp.authority);
+    expect(await getDataStore().getWalletBalance(CUSTOMER)).toBe(before + 50_000);
+  });
+
+  it("rejects invalid top-up amounts", async () => {
+    await expect(createWalletTopUp(CUSTOMER, 0)).rejects.toMatchObject({ code: "invalid-topup" });
+    await expect(createWalletTopUp(CUSTOMER, -5)).rejects.toMatchObject({ code: "invalid-topup" });
+    await expect(createWalletTopUp(CUSTOMER, 10_000_001)).rejects.toMatchObject({
+      code: "invalid-topup",
+    });
+  });
+
+  it("refunding a PAID order credits wallet + gateway parts and restores stock", async () => {
+    const stockBefore = await stockOf(P001);
+    // A fresh customer with a small wallet, so the 90,000 order
+    // splits into a wallet part and a gateway part.
+    const email = `refund-${crypto.randomUUID().slice(0, 8)}@sabzineh.ir`;
+    const { user } = await registerCustomer({
+      name: "Refund Customer",
+      email,
+      phone: "09123456789",
+      password: "secret123",
+    });
+    const addr = await getDataStore().createAddress(user.id, {
+      title: "Home",
+      city: "Tehran",
+      text: "123 Green Street",
+      postalCode: "1234567890",
+      phone: "09123456789",
+    });
+    await getDataStore().applyWalletTransaction(user.id, 30_000, "TEST_TOPUP", "test");
+    const { order, authority } = await createOrder(
+      user.id,
+      {
+        items: [{ productId: P001, qty: 1 }],
+        addressId: addr.id,
+        useWallet: true,
+        idempotencyKey: crypto.randomUUID(),
+      },
+      { locale: "fa" },
+    );
+    expect(order.walletApplied).toBe(30_000);
+    expect(order.payable).toBe(60_000);
+    await finalizePayment(authority!);
+    expect((await getDataStore().getOrderById(order.id))?.status).toBe("PAID");
+    expect(await getDataStore().getWalletBalance(user.id)).toBe(0);
+
+    const refunded = await refundOrder(order.id);
+    expect(refunded.status).toBe("REFUNDED");
+    // Both parts come back to the wallet: 30,000 wallet + 60,000 gateway.
+    expect(await getDataStore().getWalletBalance(user.id)).toBe(90_000);
+    expect(await stockOf(P001)).toBe(stockBefore);
+    // A second refund is rejected.
+    await expect(refundOrder(order.id)).rejects.toMatchObject({ code: "not-refundable" });
   });
 });

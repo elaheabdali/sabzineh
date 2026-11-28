@@ -211,7 +211,18 @@ export class PrismaBillingStore implements BillingStore {
       orderBy: { createdAt: "desc" },
       include: subscriptionWithPlan,
     });
-    return row ? toSubscriptionRecord(row) : null;
+    if (!row) return null;
+    // Phase 2 (expiry bug): an ACTIVE subscription past its
+    // currentPeriodEnd is not active. Expire it lazily on read —
+    // previously nothing ever checked the date, so expired vendor
+    // plans kept their pro rate and product cap forever.
+    if (row.currentPeriodEnd.getTime() <= Date.now()) {
+      await this.prisma.subscription
+        .update({ where: { id: row.id }, data: { status: "EXPIRED" } })
+        .catch(() => undefined);
+      return null;
+    }
+    return toSubscriptionRecord(row);
   }
 
   async updateSubscription(
@@ -439,7 +450,13 @@ export class MemoryBillingStore implements BillingStore {
     const found = [...this.subscriptions]
       .reverse()
       .find((s) => s.userId === userId && s.planKind === kind && s.status === "ACTIVE");
-    return found ? { ...found } : null;
+    if (!found) return null;
+    // Phase 2: same lazy expiry as the Prisma adapter.
+    if (found.currentPeriodEnd.getTime() <= Date.now()) {
+      found.status = "EXPIRED";
+      return null;
+    }
+    return { ...found };
   }
 
   async updateSubscription(

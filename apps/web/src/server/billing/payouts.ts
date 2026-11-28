@@ -46,11 +46,20 @@ export async function computePayout(
   periodEnd: Date,
 ): Promise<PayoutPreview> {
   const rows = await getDataStore().listVendorOrderItems(vendorId);
+  // Phase 2 (double-count bug): an item already covered by ANY
+  // existing payout of this vendor (REQUESTED, APPROVED or PAID) is
+  // never payable again. The old code filtered only by the requested
+  // window, so re-requesting with a shifted window paid the same
+  // delivered items twice.
+  const claimed = await getBillingStore().listPayouts(vendorId);
+  const isClaimed = (at: Date) =>
+    claimed.some((p) => at >= p.periodStart && at <= p.periodEnd);
   const delivered = rows.filter(
     (r) =>
       r.orderStatus === "DELIVERED" &&
       r.createdAt >= periodStart &&
-      r.createdAt <= periodEnd,
+      r.createdAt <= periodEnd &&
+      !isClaimed(r.createdAt),
   );
   const { gross, commission, net } = calcPayout(
     delivered.map((r) => ({ gross: r.gross, commissionRate: r.commissionRate })),
@@ -74,11 +83,15 @@ export async function requestPayout(
     throw new PayoutError("forbidden");
   }
   const vendorId = session.vendorId;
-  const preview = await computePayout(vendorId, periodStart, periodEnd);
-  if (preview.net <= 0) throw new PayoutError("nothing-to-pay");
   const store = getBillingStore();
+  // The open-payout check comes first: computePayout already
+  // excludes items claimed by an open payout, so a duplicate
+  // request for the same period would otherwise surface as
+  // nothing-to-pay instead of already-requested.
   const existing = await store.findPayoutByVendorPeriod(vendorId, periodStart, periodEnd);
   if (existing && existing.status !== "PAID") throw new PayoutError("already-requested");
+  const preview = await computePayout(vendorId, periodStart, periodEnd);
+  if (preview.net <= 0) throw new PayoutError("nothing-to-pay");
   return store.createPayout({
     vendorId,
     periodStart,
