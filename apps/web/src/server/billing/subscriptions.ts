@@ -27,9 +27,10 @@ import {
  *
  * Vendor plan: a vendor picks a VENDOR plan (basic / pro). The plan
  * sets the commission rate snapshotted on new orders and the
- * product-count cap. Without an active plan the vendor runs on basic
- * terms (0.12 commission, 20 products) — seed/demo vendors included,
- * so Week 5 flows keep working.
+ * product-count cap. Without an active plan the vendor cannot
+ * publish products at all (Phase 2, per the plan document); basic
+ * terms (0.12 commission, 20 products) remain only as the fallback
+ * for commission/cap lookups on existing data.
  *
  * Payment side effects (finalizePayment / failPaymentByAuthority in
  * server/orders/service.ts) call settleOrderPaymentSideEffects /
