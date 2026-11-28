@@ -19,11 +19,15 @@ import { OrderError, refundOrder } from "@/server/orders/service";
 import { getBillingStore } from "@/server/billing/store";
 import {
   createBannerAsAdmin,
+  createPlanAsAdmin,
   deleteBannerAsAdmin,
+  deletePlanAsAdmin,
   setProductStatusAsAdmin,
   updateBannerAsAdmin,
+  updatePlanAsAdmin,
 } from "./service";
 import type { BannerInput, BannerPlacement } from "@/server/store";
+import type { PlanInput } from "@/server/billing/store";
 
 /**
  * Admin server actions (Week 6).
@@ -58,6 +62,7 @@ function revalidateAdmin(): void {
     revalidatePath(`/${locale}/admin/products`);
     revalidatePath(`/${locale}/admin/banners`);
     revalidatePath(`/${locale}/admin/reports`);
+    revalidatePath(`/${locale}/admin/plans`);
     revalidatePath(`/${locale}`);
   }
 }
@@ -348,4 +353,83 @@ export async function deleteBannerAction(formData: FormData): Promise<void> {
     return;
   }
   revalidateAdmin();
+}
+
+function planInputFromForm(formData: FormData): PlanInput | null {
+  const kind = String(formData.get("kind") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const price = Number(formData.get("price") ?? NaN);
+  const periodDays = Number(formData.get("periodDays") ?? NaN);
+  if ((kind !== "BOX" && kind !== "VENDOR") || !title || !Number.isFinite(price) || !Number.isFinite(periodDays)) {
+    return null;
+  }
+  const features: Record<string, unknown> = {};
+  const commissionRate = Number(formData.get("commissionRate") ?? NaN);
+  const productLimit = Number(formData.get("maxProducts") ?? NaN);
+  if (Number.isFinite(commissionRate) && commissionRate > 0) features.commissionRate = commissionRate;
+  if (Number.isFinite(productLimit) && productLimit > 0) features.maxProducts = productLimit;
+  return { kind, title, price, periodDays, features };
+}
+
+/** Phase 4: create a subscription plan from the admin plans page. */
+export async function createPlanAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const input = planInputFromForm(formData);
+  if (!input) return;
+  try {
+    await createPlanAsAdmin(session.id, input);
+  } catch (error) {
+    console.error("createPlanAction failed", error);
+    return;
+  }
+  revalidateAdmin();
+}
+
+/** Phase 4: update a plan (title/price/period/features). */
+export async function updatePlanAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const planId = String(formData.get("planId") ?? "");
+  const input = planInputFromForm(formData);
+  if (!planId || !input) return;
+  try {
+    await updatePlanAsAdmin(session.id, planId, input);
+  } catch (error) {
+    console.error("updatePlanAction failed", error);
+    return;
+  }
+  revalidateAdmin();
+}
+
+/** Phase 4: delete a plan (refused while subscriptions use it). */
+export async function deletePlanAction(formData: FormData): Promise<void> {
+  const session = await requireRole(["ADMIN"]);
+  const planId = String(formData.get("planId") ?? "");
+  if (!planId) return;
+  try {
+    await deletePlanAsAdmin(session.id, planId);
+  } catch (error) {
+    console.error("deletePlanAction failed", error);
+    return;
+  }
+  revalidateAdmin();
+}
+
+/**
+ * Phase 4: drag-and-drop category move. Dropping a category onto
+ * another makes it a child; dropping on the root zone clears the
+ * parent. The service still validates the move (depth, cycles).
+ */
+export async function moveCategoryAction(
+  categoryId: string,
+  newParentId: string | null,
+): Promise<{ ok: boolean }> {
+  const session = await requireRole(["ADMIN"]);
+  try {
+    await updateCategoryAsAdmin(session.id, categoryId, { parentId: newParentId });
+  } catch (error) {
+    console.error("moveCategoryAction failed", error);
+    return { ok: false };
+  }
+  revalidateAdmin();
+  return { ok: true };
 }
