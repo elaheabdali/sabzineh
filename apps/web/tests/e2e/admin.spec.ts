@@ -67,6 +67,24 @@ async function registerVendor(page: Page, email: string, shopName: string) {
   await expect(page).toHaveURL(/\/fa\/vendor\/dashboard$/);
 }
 
+/**
+ * Since Phase 2 a vendor without an active subscription cannot
+ * publish, so a freshly approved vendor in these flows first
+ * subscribes to the basic plan through the mock gateway — the same
+ * journey a real vendor takes.
+ */
+async function subscribeVendorViaGateway(page: Page) {
+  await page.goto("/fa/vendor/subscription");
+  const form = page.locator("form", {
+    has: page.getByTestId("subscribe-plan-plan-vendor-basic"),
+  });
+  await form.locator('input[name="payWith"][value="gateway"]').check();
+  await page.getByTestId("subscribe-plan-plan-vendor-basic").click();
+  await page.waitForURL(/\/payment\/mock\?authority=/);
+  await page.getByTestId("mock-pay").click();
+  await page.waitForURL(/\/account\/orders\/[^/]+\?payment=success/);
+}
+
 async function addAddress(page: Page) {
   await page.goto("/fa/account/addresses");
   await page.getByLabel("عنوان آدرس").fill(`خانه-${uniq()}`);
@@ -131,6 +149,7 @@ test.describe("admin vendor approval", () => {
     await loginWithEmail(page, email);
     await page.goto("/fa/vendor/dashboard");
     await expect(page.getByTestId("vendor-pending")).toHaveCount(0);
+    await subscribeVendorViaGateway(page);
 
     const title = `E2E Approved Product ${uniq()}`;
     await page.goto("/fa/vendor/products/new");
@@ -259,6 +278,7 @@ test.describe("payouts end-to-end", () => {
       .getByTestId("vendor-dashboard")
       .getAttribute("data-vendor-id");
     expect(vendorId).toBeTruthy();
+    await subscribeVendorViaGateway(page);
     const title = `E2E Payout Product ${uniq()}`;
     await page.goto("/fa/vendor/products/new");
     await fillStep1(page, title);

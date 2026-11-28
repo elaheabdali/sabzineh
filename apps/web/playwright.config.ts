@@ -30,5 +30,10 @@ export default defineConfig({
     url: `${baseURL}/fa`,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
+    // The suite exercises the mock gateway end to end, and the server
+    // runs in production mode — since Phase 1 the app refuses to
+    // default to the mock gateway in production, so the test server
+    // must opt in explicitly (exactly what the error message asks).
+    env: { PAYMENT_PROVIDER: "mock" },
   },
 });
