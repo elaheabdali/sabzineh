@@ -11,8 +11,10 @@ const INPUT = {
 
 describe("AI client (Phase 4)", () => {
   it("is unconfigured without an API key", () => {
-    expect(getAiConfig({} as NodeJS.ProcessEnv)).toBeNull();
-    expect(getAiConfig({ AI_API_KEY: "k" } as NodeJS.ProcessEnv)?.model).toBe("gpt-4o-mini");
+    expect(getAiConfig({} as unknown as NodeJS.ProcessEnv)).toBeNull();
+    expect(getAiConfig({ AI_API_KEY: "k" } as unknown as NodeJS.ProcessEnv)?.model).toBe(
+      "gpt-4o-mini",
+    );
   });
 
   it("falls back to the template draft when no key is configured", async () => {
