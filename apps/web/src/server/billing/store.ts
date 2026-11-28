@@ -550,6 +550,20 @@ export class MemoryBillingStore implements BillingStore {
       autoRenew: true,
       createdAt: new Date(),
     });
+    // The demo vendor (u-vendor) is a subscribed seller, mirroring the
+    // demo customer's box above: since Phase 2 a vendor without an
+    // active subscription cannot publish, and the seeded catalog this
+    // vendor "sells" from presupposes one.
+    this.subscriptions.push({
+      id: "seed-vendor-plan",
+      userId: "u-vendor",
+      planId: "plan-vendor-basic",
+      planKind: "VENDOR",
+      status: "ACTIVE",
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      autoRenew: true,
+      createdAt: new Date(),
+    });
   }
 
   async createSubscription(input: {
