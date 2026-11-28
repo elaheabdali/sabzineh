@@ -11,6 +11,9 @@ export async function AdminNav() {
     { href: "/admin/categories", label: t("categories") },
     { href: "/admin/discounts", label: t("discounts") },
     { href: "/admin/orders", label: t("orders") },
+    { href: "/admin/products", label: t("products") },
+    { href: "/admin/banners", label: t("banners") },
+    { href: "/admin/reports", label: t("reports") },
     { href: "/admin/payouts", label: t("payouts") },
     { href: "/admin/audit", label: t("audit") },
   ];
