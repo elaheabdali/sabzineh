@@ -19,12 +19,18 @@ export interface DataTableProps<T> {
   selected?: string[];
   onSelectionChange?: (selected: string[]) => void;
   emptyMessage?: string;
+  /** Phase 3: server-side sorting. When provided, sortable column
+   * headers become buttons that report the requested sort; the
+   * caller re-fetches (the table itself never sorts). */
+  sort?: { key: string; dir: "asc" | "desc" };
+  onSortChange?: (key: string, dir: "asc" | "desc") => void;
 }
 
 /**
- * Server-paginated data table (admin panel). Sorting, filtering and
- * bulk actions are wired by the caller; Week 1 ships the shell with
- * real pagination + row selection so later weeks only add columns.
+ * Server-paginated data table (admin panel). Filtering and bulk
+ * actions are wired by the caller; pagination and row selection are
+ * built in, and sortable headers report sort requests through
+ * onSortChange when the caller opts into server-side sorting.
  */
 export function DataTable<T>({
   columns,
@@ -37,6 +43,8 @@ export function DataTable<T>({
   selected = [],
   onSelectionChange,
   emptyMessage = "No rows found.",
+  sort,
+  onSortChange,
 }: DataTableProps<T>) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const allSelected = rows.length > 0 && rows.every((row) => selected.includes(rowKey(row)));
@@ -63,11 +71,33 @@ export function DataTable<T>({
                 />
               </th>
             ) : null}
-            {columns.map((column) => (
-              <th key={column.key} scope="col" className="px-3 py-3 text-start font-semibold text-ink-900">
-                {column.header}
-              </th>
-            ))}
+            {columns.map((column) => {
+              const isSorted = sort?.key === column.key;
+              return (
+                <th
+                  key={column.key}
+                  scope="col"
+                  aria-sort={isSorted ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
+                  className="px-3 py-3 text-start font-semibold text-ink-900"
+                >
+                  {column.sortable && onSortChange ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSortChange(column.key, isSorted && sort.dir === "asc" ? "desc" : "asc")
+                      }
+                      className="cursor-pointer font-semibold hover:text-leaf-700"
+                      aria-label={`Sort by ${column.header}`}
+                    >
+                      {column.header}
+                      {isSorted ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                    </button>
+                  ) : (
+                    column.header
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

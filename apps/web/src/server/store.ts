@@ -2,7 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import type { Role } from "@sabzineh/types";
 import { getPrismaClient } from "@/lib/prisma";
 import { getUserStore } from "@/lib/auth/store";
-import { discounts as seedDiscounts } from "@/data/seed";
+import { banners as seedBanners, discounts as seedDiscounts } from "@/data/seed";
 
 /**
  * Order data store — one interface, two adapters (same pattern as the
@@ -35,6 +35,30 @@ export interface DiscountRecord {
   usageLimit: number | null;
   usedCount: number;
   expiresAt: Date | null;
+}
+
+export type BannerPlacement = "HOME_HERO" | "HOME_STRIP" | "CATEGORY";
+
+export interface BannerRecord {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  placement: BannerPlacement;
+  startsAt: Date | null;
+  endsAt: Date | null;
+  active: boolean;
+  createdAt: Date;
+}
+
+export interface BannerInput {
+  title: string;
+  imageUrl: string;
+  linkUrl?: string | null;
+  placement: BannerPlacement;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
+  active?: boolean;
 }
 
 export interface OrderItemRecord {
@@ -187,6 +211,11 @@ export interface DataStore {
    * on a foreign-key error).
    */
   deleteDiscount(id: string): Promise<boolean>;
+  /** Admin banner management (Phase 3). */
+  listBanners(): Promise<BannerRecord[]>;
+  createBanner(input: BannerInput): Promise<BannerRecord>;
+  updateBanner(id: string, patch: Partial<BannerInput>): Promise<BannerRecord | null>;
+  deleteBanner(id: string): Promise<boolean>;
   // --- Notifications (Week 7) -------------------------------------------
   /** Persist a notification (the SSE bus publishes it separately). */
   createNotification(
@@ -589,6 +618,49 @@ export class PrismaDataStore implements DataStore {
     return true;
   }
 
+  async listBanners(): Promise<BannerRecord[]> {
+    const rows = await this.prisma.banner.findMany({ orderBy: { createdAt: "asc" } });
+    return rows.map((r) => ({ ...r, linkUrl: r.linkUrl ?? null }));
+  }
+
+  async createBanner(input: BannerInput): Promise<BannerRecord> {
+    const row = await this.prisma.banner.create({
+      data: {
+        title: input.title,
+        imageUrl: input.imageUrl,
+        linkUrl: input.linkUrl ?? null,
+        placement: input.placement,
+        startsAt: input.startsAt ?? null,
+        endsAt: input.endsAt ?? null,
+        active: input.active ?? true,
+      },
+    });
+    return { ...row, linkUrl: row.linkUrl ?? null };
+  }
+
+  async updateBanner(id: string, patch: Partial<BannerInput>): Promise<BannerRecord | null> {
+    const row = await this.prisma.banner
+      .update({
+        where: { id },
+        data: {
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.imageUrl !== undefined ? { imageUrl: patch.imageUrl } : {}),
+          ...(patch.linkUrl !== undefined ? { linkUrl: patch.linkUrl } : {}),
+          ...(patch.placement !== undefined ? { placement: patch.placement } : {}),
+          ...(patch.startsAt !== undefined ? { startsAt: patch.startsAt } : {}),
+          ...(patch.endsAt !== undefined ? { endsAt: patch.endsAt } : {}),
+          ...(patch.active !== undefined ? { active: patch.active } : {}),
+        },
+      })
+      .catch(() => null);
+    return row ? { ...row, linkUrl: row.linkUrl ?? null } : null;
+  }
+
+  async deleteBanner(id: string): Promise<boolean> {
+    const deleted = await this.prisma.banner.delete({ where: { id } }).catch(() => null);
+    return deleted !== null;
+  }
+
   // --- Notifications (Week 7) -------------------------------------------
 
   async createNotification(
@@ -645,6 +717,17 @@ export class MemoryDataStore implements DataStore {
     usageLimit: d.usageLimit,
     usedCount: 0,
     expiresAt: null,
+  }));
+  private banners: BannerRecord[] = seedBanners.map((b) => ({
+    id: b.id,
+    title: b.title,
+    imageUrl: b.imageUrl,
+    linkUrl: b.linkUrl ?? null,
+    placement: b.placement as BannerPlacement,
+    startsAt: null,
+    endsAt: null,
+    active: b.active,
+    createdAt: new Date(),
   }));
   private orders: OrderRecord[] = [];
   private payments: PaymentRecord[] = [];
@@ -902,6 +985,46 @@ export class MemoryDataStore implements DataStore {
     const index = this.discounts.findIndex((d) => d.id === id);
     if (index === -1) return true;
     this.discounts.splice(index, 1);
+    return true;
+  }
+
+  async listBanners(): Promise<BannerRecord[]> {
+    return this.banners.map((b) => ({ ...b }));
+  }
+
+  async createBanner(input: BannerInput): Promise<BannerRecord> {
+    const record: BannerRecord = {
+      id: `banner-${crypto.randomUUID()}`,
+      title: input.title,
+      imageUrl: input.imageUrl,
+      linkUrl: input.linkUrl ?? null,
+      placement: input.placement,
+      startsAt: input.startsAt ?? null,
+      endsAt: input.endsAt ?? null,
+      active: input.active ?? true,
+      createdAt: new Date(),
+    };
+    this.banners.push(record);
+    return { ...record };
+  }
+
+  async updateBanner(id: string, patch: Partial<BannerInput>): Promise<BannerRecord | null> {
+    const found = this.banners.find((b) => b.id === id);
+    if (!found) return null;
+    if (patch.title !== undefined) found.title = patch.title;
+    if (patch.imageUrl !== undefined) found.imageUrl = patch.imageUrl;
+    if (patch.linkUrl !== undefined) found.linkUrl = patch.linkUrl;
+    if (patch.placement !== undefined) found.placement = patch.placement;
+    if (patch.startsAt !== undefined) found.startsAt = patch.startsAt;
+    if (patch.endsAt !== undefined) found.endsAt = patch.endsAt;
+    if (patch.active !== undefined) found.active = patch.active;
+    return { ...found };
+  }
+
+  async deleteBanner(id: string): Promise<boolean> {
+    const index = this.banners.findIndex((b) => b.id === id);
+    if (index === -1) return false;
+    this.banners.splice(index, 1);
     return true;
   }
 

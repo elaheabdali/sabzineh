@@ -62,6 +62,13 @@ export interface VendorRepository {
     id: string,
     status: VendorProductStatus,
   ): Promise<VendorProductDetail | null>;
+  /** Admin moderation (Phase 3): every product, any vendor/status. */
+  listAllProducts(params?: VendorProductListParams): Promise<ProductDTO[]>;
+  /** Admin moderation (Phase 3): set status without an owner check. */
+  setProductStatusAsAdmin(
+    id: string,
+    status: VendorProductStatus,
+  ): Promise<VendorProductDetail | null>;
   getVendorProfileByUserId(userId: string): Promise<VendorProfileDTO | null>;
   getVendorProfileById(vendorId: string): Promise<VendorProfileDTO | null>;
   getVendorProfileBySlug(slug: string): Promise<VendorProfileDTO | null>;
@@ -220,6 +227,26 @@ export class MemoryVendorRepository implements VendorRepository {
   ): Promise<VendorProductDetail | null> {
     const product = seedProducts.find((p) => p.id === id);
     if (!product || product.vendorId !== vendorId) return null;
+    product.status = status;
+    return toDetail(product);
+  }
+
+  async listAllProducts(params?: VendorProductListParams): Promise<ProductDTO[]> {
+    let items = [...seedProducts];
+    if (params?.status) items = items.filter((p) => p.status === params.status);
+    if (params?.q) {
+      const query = params.q.toLowerCase();
+      items = items.filter((p) => p.title.toLowerCase().includes(query));
+    }
+    return items.sort((a, b) => b.id.localeCompare(a.id)).map(withImages);
+  }
+
+  async setProductStatusAsAdmin(
+    id: string,
+    status: VendorProductStatus,
+  ): Promise<VendorProductDetail | null> {
+    const product = seedProducts.find((p) => p.id === id);
+    if (!product) return null;
     product.status = status;
     return toDetail(product);
   }
@@ -470,6 +497,32 @@ export class PrismaVendorRepository implements VendorRepository {
   ): Promise<VendorProductDetail | null> {
     const existing = await this.prisma.product.findUnique({ where: { id }, select: { vendorId: true } });
     if (!existing || existing.vendorId !== vendorId) return null;
+    const product = await this.prisma.product.update({
+      where: { id },
+      data: { status },
+      include: productWithImages,
+    });
+    return toProductDetail(product);
+  }
+
+  async listAllProducts(params?: VendorProductListParams): Promise<ProductDTO[]> {
+    const items = await this.prisma.product.findMany({
+      where: {
+        ...(params?.status ? { status: params.status } : {}),
+        ...(params?.q ? { title: { contains: params.q, mode: "insensitive" } } : {}),
+      },
+      include: productWithImages,
+      orderBy: { createdAt: "desc" },
+    });
+    return items.map(toProductDTO);
+  }
+
+  async setProductStatusAsAdmin(
+    id: string,
+    status: VendorProductStatus,
+  ): Promise<VendorProductDetail | null> {
+    const existing = await this.prisma.product.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return null;
     const product = await this.prisma.product.update({
       where: { id },
       data: { status },

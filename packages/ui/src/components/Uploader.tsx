@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ImagePlus, X } from "lucide-react";
 import { cn } from "../cn";
 
 export interface UploadFileItem {
@@ -27,8 +27,10 @@ const DEFAULT_ACCEPT = "image/jpeg,image/png,image/webp";
 /**
  * Full uploader shell (vendor product form, admin banners):
  * drag-and-drop, multiple files, previews, reorder-safe ids,
- * per-file type/size errors with retry (remove + re-add), progress slot.
- * Actual upload to storage lands in Week 5; Week 1 validates + previews.
+ * per-file type/size errors with retry (remove + re-add), progress
+ * slot, and Phase 3 reorder controls (move earlier / later buttons,
+ * keyboard- and screen-reader-friendly). Actual upload to storage
+ * lands in Week 5; Week 1 validates + previews.
  */
 export function Uploader({
   files,
@@ -80,6 +82,15 @@ export function Uploader({
     event.target.value = "";
   };
 
+  const move = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= files.length) return;
+    const next = [...files];
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item);
+    onFilesChange(next);
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <div
@@ -110,7 +121,7 @@ export function Uploader({
       </div>
       {files.length > 0 ? (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Selected images">
-          {files.map((item) => (
+          {files.map((item, index) => (
             <li key={item.id} className="relative overflow-hidden rounded-xl border border-cream-200 bg-white">
               {item.previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -132,6 +143,26 @@ export function Uploader({
                 </div>
               ) : null}
               <p className="truncate px-2 py-1 text-xs text-neutral-600">{item.file.name}</p>
+              <span className="absolute start-1 top-1 flex gap-1">
+                <button
+                  type="button"
+                  aria-label={`Move ${item.file.name} earlier`}
+                  disabled={index === 0}
+                  onClick={() => move(index, -1)}
+                  className="cursor-pointer rounded-full bg-white p-1 shadow hover:bg-cream-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ArrowLeft className="size-4 rtl:rotate-180" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move ${item.file.name} later`}
+                  disabled={index === files.length - 1}
+                  onClick={() => move(index, 1)}
+                  className="cursor-pointer rounded-full bg-white p-1 shadow hover:bg-cream-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ArrowRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+                </button>
+              </span>
               <button
                 type="button"
                 aria-label={`Remove ${item.file.name}`}

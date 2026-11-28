@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { buildCategoryTree, products, vendors, banners } from "@/data/seed";
+import { buildCategoryTree, products, vendors } from "@/data/seed";
+import { getDataStore } from "@/server/store";
 import { ProductCard } from "@/components/ProductCard";
 import { RecommendationsSection } from "@/components/RecommendationsSection";
 import { JsonLd } from "@/components/JsonLd";
@@ -18,7 +19,17 @@ export default async function HomePage({ params }: HomePageProps) {
   const t = await getTranslations("home");
   const tree = buildCategoryTree();
   const featured = [...products].sort((a, b) => b.rating - a.rating).slice(0, 8);
+  // Phase 3: banners come from the store (admin-managed in the
+  // panel), active and inside their optional date window.
+  const now = new Date();
+  const banners = (await getDataStore().listBanners()).filter(
+    (b) =>
+      b.active &&
+      (!b.startsAt || b.startsAt <= now) &&
+      (!b.endsAt || b.endsAt >= now),
+  );
   const hero = banners.find((b) => b.placement === "HOME_HERO");
+  const strip = banners.find((b) => b.placement === "HOME_STRIP");
 
   return (
     <div className="flex flex-col gap-12 pt-8">
@@ -34,6 +45,20 @@ export default async function HomePage({ params }: HomePageProps) {
           {t("heroCta")}
         </Link>
       </section>
+
+      {strip ? (
+        <section
+          aria-label={strip.title}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-leaf-200 bg-leaf-50 px-5 py-4"
+        >
+          <p className="text-sm font-bold text-leaf-800">{strip.title}</p>
+          {strip.linkUrl ? (
+            <Link href={strip.linkUrl.replace(/^\/(fa|en)/, "")} className="text-sm font-bold text-leaf-700 hover:underline">
+              {t("heroCta")}
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
 
       <section aria-labelledby="home-categories">
         <h2 id="home-categories" className="text-xl font-black text-ink-900">
