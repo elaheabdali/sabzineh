@@ -6,6 +6,7 @@
  * production.
  */
 import { hashSync } from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { seedData } from "./seed-data";
 
@@ -21,18 +22,29 @@ function placeholderImage(title: string): string {
 /** Real bcrypt hash of the demo password, computed at seed time. */
 const DEMO_PASSWORD_HASH = hashSync("demo1234", 10);
 
+/**
+ * Phase 1 (security): only the ONE demo vendor account may sign in
+ * with the public demo password. Every other seed vendor still needs
+ * a User row (VendorProfile.userId is a required relation), but its
+ * password is a hash of a random UUID that is never stored or shown
+ * anywhere — the account is effectively locked. Re-running the seed
+ * also rotates any previously-seeded vendor account that still had
+ * the demo password.
+ */
+const lockedPasswordHash = () => hashSync(randomUUID(), 10);
+
 async function main() {
   // Vendors + demo users first (products reference vendors).
   for (const vendor of seedData.vendors) {
     const demoUser = seedData.demoUsers.find((u) => u.vendorId === vendor.id);
     const user = await prisma.user.upsert({
       where: { email: demoUser ? demoUser.email : `${vendor.slug}@vendors.sabzineh.ir` },
-      update: {},
+      update: demoUser ? {} : { passwordHash: lockedPasswordHash() },
       create: {
         email: demoUser ? demoUser.email : `${vendor.slug}@vendors.sabzineh.ir`,
         name: demoUser ? demoUser.name : vendor.shopName,
         role: demoUser ? (demoUser.role as "VENDOR") : "VENDOR",
-        passwordHash: DEMO_PASSWORD_HASH,
+        passwordHash: demoUser ? DEMO_PASSWORD_HASH : lockedPasswordHash(),
       },
     });
     await prisma.vendorProfile.upsert({

@@ -14,7 +14,7 @@ describe("getPaymentPort", () => {
     vi.unstubAllEnvs();
   });
 
-  it("defaults to the mock provider", async () => {
+  it("defaults to the mock provider outside production", async () => {
     delete process.env.PAYMENT_PROVIDER;
     const port = getPaymentPort();
     expect(port.provider).toBe("mock");
@@ -24,9 +24,25 @@ describe("getPaymentPort", () => {
       description: "test",
       callbackUrl: "http://localhost/callback",
     });
-    expect(created.authority).toBe("MOCK-ord-1");
+    // Phase 1: the authority is an unguessable random credential,
+    // never derived from the (learnable) order id.
+    expect(created.authority).toMatch(/^MOCK-/);
+    expect(created.authority).not.toContain("ord-1");
     const verified = await port.verify(created.authority, 100_000);
-    expect(verified).toEqual({ status: "PAID", refId: "MOCK-REF-ord-1" });
+    expect(verified.status).toBe("PAID");
+    expect(verified.refId).toBe(`MOCK-REF-${created.authority.slice("MOCK-".length)}`);
+    // Note: a forged "MOCK-<orderId>" can no longer be used against
+    // a real order, because finalizePayment first looks the payment
+    // up by authority — and no Payment row ever holds that value now.
+  });
+
+  it("refuses the implicit mock default in production", () => {
+    delete process.env.PAYMENT_PROVIDER;
+    vi.stubEnv("NODE_ENV", "production");
+    expect(() => getPaymentPort()).toThrow(PaymentConfigurationError);
+    // …but an explicit mock choice is still honoured.
+    process.env.PAYMENT_PROVIDER = "mock";
+    expect(getPaymentPort().provider).toBe("mock");
   });
 
   it("fails verify for a foreign authority", async () => {

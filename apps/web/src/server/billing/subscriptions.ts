@@ -400,13 +400,24 @@ export async function subscribeToBox(
   const port = getPaymentPort();
   const provider = port.provider === "zarinpal" ? "ZARINPAL" : "MOCK";
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const payment = await port.createPayment({
-    orderId: order.id,
-    amount: plan.price,
-    description: `Sabzineh box subscription ${subscription.id}`,
-    callbackUrl: `${baseUrl}/api/payments/callback`,
-    locale: opts?.locale ?? "fa",
-  });
+  let payment: Awaited<ReturnType<typeof port.createPayment>>;
+  try {
+    payment = await port.createPayment({
+      orderId: order.id,
+      amount: plan.price,
+      description: `Sabzineh box subscription ${subscription.id}`,
+      callbackUrl: `${baseUrl}/api/payments/callback`,
+      locale: opts?.locale ?? "fa",
+    });
+  } catch (error) {
+    // Phase 1: same orphan rule as checkout — if the gateway cannot
+    // create the payment, cancel the box order and the subscription
+    // instead of leaving an ACTIVE subscription with a stuck order.
+    await dataStore.updateOrderStatus(order.id, "CANCELLED").catch(() => undefined);
+    await settleOrderFailureSideEffects(order);
+    await store.updateSubscription(subscription.id, { status: "CANCELLED" }).catch(() => undefined);
+    throw error;
+  }
   await dataStore.createPayment({
     orderId: order.id,
     provider,
@@ -476,13 +487,20 @@ export async function subscribeToVendorPlan(
   const port = getPaymentPort();
   const provider = port.provider === "zarinpal" ? "ZARINPAL" : "MOCK";
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const payment = await port.createPayment({
-    orderId: order.id,
-    amount: plan.price,
-    description: `Sabzineh vendor plan ${plan.title}`,
-    callbackUrl: `${baseUrl}/api/payments/callback`,
-    locale: opts?.locale ?? "fa",
-  });
+  let payment: Awaited<ReturnType<typeof port.createPayment>>;
+  try {
+    payment = await port.createPayment({
+      orderId: order.id,
+      amount: plan.price,
+      description: `Sabzineh vendor plan ${plan.title}`,
+      callbackUrl: `${baseUrl}/api/payments/callback`,
+      locale: opts?.locale ?? "fa",
+    });
+  } catch (error) {
+    // Phase 1: do not orphan the plan order when the gateway fails.
+    await getDataStore().updateOrderStatus(order.id, "CANCELLED").catch(() => undefined);
+    throw error;
+  }
   await getDataStore().createPayment({
     orderId: order.id,
     provider,

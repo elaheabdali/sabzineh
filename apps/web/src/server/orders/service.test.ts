@@ -7,6 +7,7 @@ import {
   createOrder,
   failPaymentByAuthority,
   finalizePayment,
+  OrderError,
   validateDiscountCode,
 } from "./service";
 
@@ -181,5 +182,69 @@ describe("createOrder idempotency + stock + wallet", () => {
     expect(failed?.status).toBe("CANCELLED");
     expect(await stockOf(P001)).toBe(stockBefore);
     expect(await getDataStore().getWalletBalance(CUSTOMER)).toBe(60_000);
+  });
+});
+
+describe("Phase 1 — idempotency ownership + gateway-failure compensation", () => {
+  it("rejects an idempotency replay from a different user", async () => {
+    const address = await makeAddress();
+    const key = crypto.randomUUID();
+    const first = await createOrder(
+      CUSTOMER,
+      { items: [{ productId: P001, qty: 1 }], addressId: address.id, idempotencyKey: key },
+      { locale: "fa" },
+    );
+    expect(first.created).toBe(true);
+    await expect(
+      createOrder(
+        "u-admin",
+        { items: [{ productId: P001, qty: 1 }], addressId: address.id, idempotencyKey: key },
+        { locale: "fa" },
+      ),
+    ).rejects.toEqual(new OrderError("not-your-order"));
+  });
+
+  it("refunds the wallet, restores stock and un-burns the discount when gateway creation fails", async () => {
+    const address = await makeAddress();
+    const key = crypto.randomUUID();
+    const balanceBefore = await getDataStore().getWalletBalance(CUSTOMER);
+    const stockBefore = await stockOf(P001);
+    const discountBefore = await getDataStore().getDiscountByCode("SABZ10");
+    const prevProvider = process.env.PAYMENT_PROVIDER;
+    const prevMerchant = process.env.ZARINPAL_MERCHANT_ID;
+    // Zarinpal selected but not configured → getPaymentPort() throws
+    // AFTER store.createOrder has committed (wallet debited, discount
+    // consumed). The order must be compensated, not orphaned.
+    process.env.PAYMENT_PROVIDER = "zarinpal";
+    delete process.env.ZARINPAL_MERCHANT_ID;
+    try {
+      await expect(
+        createOrder(
+          CUSTOMER,
+          {
+            // qty 3 → 270,000 gross, above SABZ10's 200,000 minimum.
+            items: [{ productId: P001, qty: 3 }],
+            addressId: address.id,
+            useWallet: true,
+            discountCode: "SABZ10",
+            idempotencyKey: key,
+          },
+          { locale: "fa" },
+        ),
+      ).rejects.toThrow();
+    } finally {
+      if (prevProvider === undefined) delete process.env.PAYMENT_PROVIDER;
+      else process.env.PAYMENT_PROVIDER = prevProvider;
+      if (prevMerchant === undefined) delete process.env.ZARINPAL_MERCHANT_ID;
+      else process.env.ZARINPAL_MERCHANT_ID = prevMerchant;
+    }
+    const orphan = await getDataStore().getOrderByIdempotencyKey(key);
+    expect(orphan?.status).toBe("CANCELLED");
+    expect(await getDataStore().getWalletBalance(CUSTOMER)).toBe(balanceBefore);
+    expect(await stockOf(P001)).toBe(stockBefore);
+    const discountAfter = await getDataStore().getDiscountByCode("SABZ10");
+    expect(discountAfter?.usedCount).toBe(discountBefore?.usedCount);
+    const revalidated = await validateDiscountCode("SABZ10", CUSTOMER, 300_000);
+    expect(revalidated.ok).toBe(true);
   });
 });
