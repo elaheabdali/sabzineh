@@ -2,6 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { buildCategoryTree, products, vendors, banners } from "@/data/seed";
 import { ProductCard } from "@/components/ProductCard";
+import { RecommendationsSection } from "@/components/RecommendationsSection";
+import { JsonLd } from "@/components/JsonLd";
+import { websiteJsonLd } from "@/lib/seo";
 import type { Locale } from "@/i18n/routing";
 
 interface HomePageProps {
@@ -19,6 +22,7 @@ export default async function HomePage({ params }: HomePageProps) {
 
   return (
     <div className="flex flex-col gap-12 pt-8">
+      <JsonLd data={websiteJsonLd(loc)} />
       <section className="rounded-3xl bg-leaf-700 px-6 py-12 text-white sm:px-12">
         <h1 className="max-w-2xl text-3xl font-black leading-snug sm:text-4xl">{t("heroTitle")}</h1>
         <p className="mt-3 max-w-xl text-base leading-7 text-leaf-100">{t("heroSubtitle")}</p>
@@ -45,7 +49,7 @@ export default async function HomePage({ params }: HomePageProps) {
                 <span className="block text-sm font-bold text-ink-900">
                   {loc === "fa" ? node.nameFa : node.nameEn}
                 </span>
-                <span className="mt-1 block text-xs text-neutral-500">
+                <span className="mt-1 block text-xs text-neutral-600">
                   {node.productCount.toLocaleString(loc === "fa" ? "fa-IR" : "en-US")} {t("allProducts")}
                 </span>
               </Link>
@@ -69,6 +73,8 @@ export default async function HomePage({ params }: HomePageProps) {
           ))}
         </div>
       </section>
+
+      <RecommendationsSection locale={loc} />
 
       <section aria-labelledby="home-vendors">
         <h2 id="home-vendors" className="text-xl font-black text-ink-900">

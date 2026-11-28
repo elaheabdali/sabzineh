@@ -27,7 +27,7 @@ export async function ProductGrid({ result, basePath, params, locale, clearHref 
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
-      <p className="text-sm text-neutral-500" data-testid="result-count" aria-live="polite">
+      <p className="text-sm text-neutral-600" data-testid="result-count" aria-live="polite">
         {total.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")} {t("products")}
         {totalPages > 1
           ? ` — ${t("page")} ${page.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")} ${t("of")} ${totalPages.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}`
@@ -37,7 +37,7 @@ export async function ProductGrid({ result, basePath, params, locale, clearHref 
       {items.length === 0 ? (
         <div className="rounded-2xl border border-cream-200 bg-white p-8 text-center" data-testid="empty-state">
           <p className="font-bold text-ink-900">{t("noResults")}</p>
-          <p className="mt-1 text-sm text-neutral-500">{t("noResultsHint")}</p>
+          <p className="mt-1 text-sm text-neutral-600">{t("noResultsHint")}</p>
           {clearHref ? (
             <Link href={clearHref} className="mt-4 inline-block rounded-lg bg-leaf-700 px-4 py-2 text-sm font-bold text-white">
               {t("clearAll")}

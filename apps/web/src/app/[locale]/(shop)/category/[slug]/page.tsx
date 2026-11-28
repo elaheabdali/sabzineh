@@ -8,6 +8,8 @@ import { FilterPanel } from "@/components/FilterPanel";
 import { ActiveFilterChips } from "@/components/ActiveFilterChips";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SortSelect } from "@/components/SortSelect";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbJsonLd, localeAlternates } from "@/lib/seo";
 import type { Locale } from "@/i18n/routing";
 
 interface CategoryPageProps {
@@ -29,7 +31,10 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   const category = await repo.getCategoryBySlug(slug);
   if (!category) return {};
   const name = locale === "fa" ? category.nameFa : category.nameEn;
-  return { title: locale === "fa" ? `${name} | سبزینه` : `${name} | Sabzineh` };
+  return {
+    title: locale === "fa" ? `${name} | سبزینه` : `${name} | Sabzineh`,
+    alternates: localeAlternates(`/category/${slug}`),
+  };
 }
 
 /**
@@ -70,11 +75,20 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     return undefined;
   };
   const children = findNode(tree)?.children ?? [];
+  const breadcrumbItems = [
+    { name: loc === "fa" ? "خانه" : "Home", path: "/" },
+    ...ancestors.map((a) => ({
+      name: loc === "fa" ? a.nameFa : a.nameEn,
+      path: `/category/${a.slug}`,
+    })),
+    { name, path: `/category/${slug}` },
+  ];
 
   return (
     <div className="flex flex-col gap-6 pt-8">
+      <JsonLd data={breadcrumbJsonLd(loc, breadcrumbItems)} />
       <nav aria-label="Breadcrumb">
-        <ol className="flex flex-wrap items-center gap-2 text-sm text-neutral-500">
+        <ol className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
           <li>
             <Link href="/" className="hover:text-leaf-700 hover:underline">
               {loc === "fa" ? "خانه" : "Home"}

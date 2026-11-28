@@ -63,6 +63,8 @@ export const ProductSchema = z.object({
   glutenFree: z.boolean(),
   local: z.boolean(),
   rating: z.number().min(0).max(5),
+  /** Uploaded image URLs (data: URLs in demo mode). Absent = placeholder gallery. */
+  images: z.array(z.string()).optional(),
 });
 export type ProductDTO = z.infer<typeof ProductSchema>;
 
@@ -126,3 +128,188 @@ export const MoneySchema = z.object({
   payable: z.number().int().nonnegative(),
 });
 export type Money = z.infer<typeof MoneySchema>;
+
+// ---------------------------------------------------------------------------
+// Auth (Week 3) — one schema validates the form on the client and the
+// payload on the server. Password rules live in lib/auth/password.ts
+// (same constants, enforced server-side); the schema only checks shape.
+// ---------------------------------------------------------------------------
+
+export const LoginSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  password: z.string().min(1),
+});
+export type LoginInput = z.infer<typeof LoginSchema>;
+
+export const RegisterSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().toLowerCase().email(),
+  /** Iranian mobile, 09xxxxxxxxx or +989xxxxxxxxx (normalised server-side). */
+  phone: z.string().trim().min(10).max(15),
+  password: z.string().min(8).max(128),
+});
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+
+/** The public shape of a signed-in user — never includes a password hash. */
+export const SessionUserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string(),
+  role: RoleSchema,
+  vendorId: z.string().nullable(),
+});
+export type SessionUser = z.infer<typeof SessionUserSchema>;
+
+// ---------------------------------------------------------------------------
+// Addresses (Week 3)
+// ---------------------------------------------------------------------------
+
+export const AddressSchema = z.object({
+  title: z.string().trim().min(2).max(40),
+  city: z.string().trim().min(2).max(60),
+  text: z.string().trim().min(10).max(300),
+  /** Exactly 10 digits (Persian digits are normalised server-side). */
+  postalCode: z.string().trim().min(10).max(10),
+  phone: z.string().trim().min(10).max(15),
+});
+export type AddressInput = z.infer<typeof AddressSchema>;
+
+export const AddressDTOSchema = AddressSchema.extend({
+  id: z.string(),
+  userId: z.string(),
+});
+export type AddressDTO = z.infer<typeof AddressDTOSchema>;
+
+// ---------------------------------------------------------------------------
+// Vendor panel (Week 5) — multi-step product form, profile, registration.
+// One schema validates a step on the client and the payload on the
+// server; the combined input is what the server action receives.
+// ---------------------------------------------------------------------------
+
+/** Step 1 — basics. Prices are integer Toman; min 1,000 keeps typos out. */
+const VendorProductStep1Shape = {
+  title: z.string().trim().min(2).max(120),
+  description: z.string().trim().min(10).max(2000),
+  categoryId: z.string().min(1),
+  price: z.number().int().min(1000).max(100_000_000),
+  compareAtPrice: z.number().int().min(1000).max(100_000_000).nullable().optional(),
+  stock: z.number().int().min(0).max(100_000),
+};
+
+const compareAtPriceRefine = {
+  check: (v: { price: number; compareAtPrice?: number | null }) =>
+    v.compareAtPrice == null || v.compareAtPrice > v.price,
+  params: { path: ["compareAtPrice"], message: "compareAtPrice must exceed price" },
+};
+
+export const VendorProductStep1Schema = z
+  .object(VendorProductStep1Shape)
+  .refine(compareAtPriceRefine.check, compareAtPriceRefine.params);
+export type VendorProductStep1 = z.infer<typeof VendorProductStep1Schema>;
+
+/** One uploaded image: a data: URL (demo) or https URL, with alt text. */
+export const VendorProductImageSchema = z.object({
+  url: z
+    .string()
+    .min(1)
+    .max(3_000_000)
+    .refine(
+      (u) =>
+        u.startsWith("data:image/") ||
+        /^https:\/\/[^?#]+\.(jpg|jpeg|png|webp)(\?|#|$)/i.test(u),
+      { message: "image must be a data: image URL or https image URL" },
+    ),
+  alt: z.string().trim().max(120),
+});
+export type VendorProductImage = z.infer<typeof VendorProductImageSchema>;
+
+/** Step 2 — images. Zero is allowed (placeholder gallery); max 4. */
+export const VendorProductStep2Schema = z.object({
+  images: z.array(VendorProductImageSchema).max(4),
+});
+export type VendorProductStep2 = z.infer<typeof VendorProductStep2Schema>;
+
+/** Step 3 — attributes, tags and tasting/origin notes. */
+const VendorProductStep3Shape = {
+  organic: z.boolean(),
+  glutenFree: z.boolean(),
+  local: z.boolean(),
+  tags: z.array(z.string().trim().min(1).max(30)).max(10),
+  originNote: z.string().trim().max(300).optional(),
+};
+
+export const VendorProductStep3Schema = z.object(VendorProductStep3Shape);
+export type VendorProductStep3 = z.infer<typeof VendorProductStep3Schema>;
+
+/** The full product payload the server action receives. */
+export const VendorProductInputSchema = z
+  .object({
+    ...VendorProductStep1Shape,
+    images: z.array(VendorProductImageSchema).max(4),
+    ...VendorProductStep3Shape,
+  })
+  .refine(compareAtPriceRefine.check, compareAtPriceRefine.params);
+export type VendorProductInput = z.infer<typeof VendorProductInputSchema>;
+
+export const VendorProductStatusSchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
+export type VendorProductStatus = z.infer<typeof VendorProductStatusSchema>;
+
+/** Vendor profile — public fields + payout fields (never shown publicly). */
+export const VendorProfileSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  shopName: z.string(),
+  slug: z.string(),
+  city: z.string(),
+  bio: z.string().nullable(),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED", "SUSPENDED"]),
+  /** Reason left by an admin when rejecting the request (Week 6). */
+  rejectionReason: z.string().nullable(),
+  rating: z.number(),
+  phone: z.string().nullable(),
+  logoUrl: z.string().nullable(),
+  payoutIban: z.string().nullable(),
+  payoutAccountHolder: z.string().nullable(),
+});
+export type VendorProfileDTO = z.infer<typeof VendorProfileSchema>;
+
+/** Iranian IBAN (Sheba): IR + 24 digits, spaces stripped before check. */
+export const IbanSchema = z
+  .string()
+  .transform((v) => v.replace(/\s+/g, "").toUpperCase())
+  .pipe(z.string().regex(/^IR[0-9]{24}$/));
+
+export const VendorProfileUpdateSchema = z.object({
+  shopName: z.string().trim().min(2).max(80),
+  city: z.string().trim().min(2).max(60),
+  bio: z.string().trim().max(500).optional(),
+  phone: z.string().trim().min(10).max(15).optional(),
+  logoUrl: z
+    .string()
+    .max(3_000_000)
+    .refine((u) => u === "" || u.startsWith("data:image/") || u.startsWith("https://"))
+    .optional(),
+  payoutIban: IbanSchema.optional(),
+  payoutAccountHolder: z.string().trim().max(80).optional(),
+});
+export type VendorProfileUpdate = z.infer<typeof VendorProfileUpdateSchema>;
+
+/** Vendor registration request — creates a VENDOR user + PENDING profile. */
+export const VendorRegistrationSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().toLowerCase().email(),
+  phone: z.string().trim().min(10).max(15),
+  password: z.string().min(8).max(128),
+  shopName: z.string().trim().min(2).max(80),
+  city: z.string().trim().min(2).max(60),
+  bio: z.string().trim().max(500).optional(),
+  documentsNote: z.string().trim().max(500).optional(),
+});
+export type VendorRegistrationInput = z.infer<typeof VendorRegistrationSchema>;
+
+/** Vendor order fulfilment: PAID → PREPARING → SHIPPED → DELIVERED. */
+export const VendorOrderStatusSchema = z.object({
+  orderId: z.string().min(1),
+  toStatus: z.enum(["PREPARING", "SHIPPED", "DELIVERED"]),
+});
+export type VendorOrderStatus = z.infer<typeof VendorOrderStatusSchema>;

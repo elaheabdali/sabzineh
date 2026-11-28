@@ -24,8 +24,10 @@ export async function generateMetadata({ params }: SearchPageProps): Promise<Met
 /**
  * Search page: plain text search (`q`, title + vendor name) and the
  * smart-search mode (`smart=`, natural language → structured filters
- * via the parseSmartQuery stub). Facets, sort and pagination are the
- * same components as the category page — one catalog, one URL shape.
+ * via parseSmartQuery — deterministic heuristics, no AI call).
+ * Facets, sort and pagination are the same components as the category
+ * page — one catalog, one URL shape. When the parser corrects a typo,
+ * the correction is shown, never silently hidden.
  *
  * NOTE: once a user removes a chip, the `smart` phrase drops out of
  * the URL and the smart note disappears — the filters themselves
@@ -40,10 +42,12 @@ export default async function SearchPage({ params, searchParams }: SearchPagePro
 
   let filter: FilterParams;
   let matched: string[] = [];
+  let corrected: { from: string; to: string }[] = [];
   if (smart) {
     const parsed = parseSmartQuery(smart);
     filter = parsed.params;
     matched = parsed.matched;
+    corrected = parsed.corrected;
   } else {
     filter = parseFilterParams(raw);
   }
@@ -69,6 +73,12 @@ export default async function SearchPage({ params, searchParams }: SearchPagePro
       {smart && matched.length > 0 ? (
         <p className="rounded-2xl border border-dashed border-leaf-600 bg-leaf-100/50 px-4 py-3 text-sm text-ink-900" data-testid="smart-matched">
           {t("smartMatched")}: {matched.join("، ")}
+        </p>
+      ) : null}
+
+      {smart && corrected.length > 0 ? (
+        <p className="rounded-2xl border border-cream-200 bg-cream-100 px-4 py-3 text-sm text-ink-900" data-testid="smart-corrected">
+          {t("smartCorrected")} «{corrected[0].from}»؟ {t("searchResults")}: «{corrected[0].to}»
         </p>
       ) : null}
 

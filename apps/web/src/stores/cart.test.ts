@@ -36,6 +36,19 @@ describe("cart store", () => {
     expect(useCartStore.getState().lines).toHaveLength(0);
   });
 
+  it("merges guest lines on login without duplicating", () => {
+    const store = useCartStore.getState();
+    store.add("p001", 2);
+    useCartStore.getState().mergeGuestCart([
+      { productId: "p001", qty: 3 },
+      { productId: "p002", qty: 1 },
+    ]);
+    const lines = useCartStore.getState().lines;
+    expect(lines.find((l) => l.productId === "p001")?.qty).toBe(5);
+    expect(lines.find((l) => l.productId === "p002")?.qty).toBe(1);
+    expect(useCartStore.getState().count()).toBe(6);
+  });
+
   it("computes the display subtotal from seed prices", () => {
     // p001 is the first seeded product (سیب قرمز ارگانیک, price from seed).
     useCartStore.getState().add("p001", 2);

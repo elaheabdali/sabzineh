@@ -6,6 +6,9 @@ import { getCatalogRepository } from "@/features/catalog/repository";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductGallery } from "@/components/ProductGallery";
 import { ProductPurchaseBox } from "@/components/ProductPurchaseBox";
+import { TrackView } from "@/components/TrackView";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbJsonLd, localeAlternates, productJsonLd } from "@/lib/seo";
 import { formatJalali, formatPrice } from "@/lib/format";
 import type { Locale } from "@/i18n/routing";
 
@@ -27,6 +30,12 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   return {
     title: locale === "fa" ? `${product.title} | سبزینه` : `${product.title} | Sabzineh`,
     description: product.description,
+    alternates: localeAlternates(`/product/${slug}`),
+    openGraph: {
+      type: "website",
+      title: locale === "fa" ? `${product.title} | سبزینه` : `${product.title} | Sabzineh`,
+      description: product.description,
+    },
   };
 }
 
@@ -52,11 +61,34 @@ export default async function ProductPage({ params }: ProductPageProps) {
     repo.getReviews(product.id),
   ]);
   const ancestors = category ? await repo.getCategoryAncestors(category.slug) : [];
+  const breadcrumbItems = [
+    { name: loc === "fa" ? "خانه" : "Home", path: "/" },
+    ...ancestors.map((a) => ({
+      name: loc === "fa" ? a.nameFa : a.nameEn,
+      path: `/category/${a.slug}`,
+    })),
+    { name: product.title, path: `/product/${product.slug}` },
+  ];
 
   return (
     <div className="flex flex-col gap-10 pt-8">
+      <JsonLd
+        data={productJsonLd(loc, {
+          title: product.title,
+          description: product.description,
+          slug: product.slug,
+          price: product.price,
+          compareAtPrice: product.compareAtPrice,
+          stock: product.stock,
+          rating: product.rating,
+          vendorName: vendor?.shopName ?? "",
+          categoryName: category ? (loc === "fa" ? category.nameFa : category.nameEn) : "",
+        })}
+      />
+      <JsonLd data={breadcrumbJsonLd(loc, breadcrumbItems)} />
+      <TrackView productId={product.id} />
       <nav aria-label="Breadcrumb">
-        <ol className="flex flex-wrap items-center gap-2 text-sm text-neutral-500">
+        <ol className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
           <li>
             <Link href="/" className="hover:text-leaf-700 hover:underline">
               {loc === "fa" ? "خانه" : "Home"}
@@ -78,11 +110,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       <div className="grid gap-8 md:grid-cols-2">
-        <ProductGallery title={product.title} />
+        <ProductGallery title={product.title} images={product.images} />
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-black leading-snug text-ink-900">{product.title}</h1>
           {vendor ? (
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-600">
               {t("vendor")}:{" "}
               <Link href={`/search?vendor=${vendor.id}`} className="font-medium text-leaf-700 hover:underline">
                 {vendor.shopName}
@@ -126,14 +158,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
           {t("reviews")} ({reviews.length.toLocaleString(loc === "fa" ? "fa-IR" : "en-US")})
         </h2>
         {reviews.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500">{t("noReviews")}</p>
+          <p className="mt-2 text-sm text-neutral-600">{t("noReviews")}</p>
         ) : (
           <ul className="mt-4 flex flex-col gap-3">
             {reviews.map((review) => (
               <li key={review.id} className="rounded-2xl border border-cream-200 bg-white p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-sm font-bold text-ink-900">{review.author}</span>
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-xs text-neutral-600">
                     <span aria-label={`Rating ${review.rating} of 5`}>
                       ★ {review.rating.toLocaleString(loc === "fa" ? "fa-IR" : "en-US")}
                     </span>

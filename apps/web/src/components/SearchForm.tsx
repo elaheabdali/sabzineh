@@ -42,10 +42,10 @@ export function HeaderSearch() {
 
 /**
  * Natural-language search box (search page).
- * Parses the phrase with parseSmartQuery (STUB — keyword matcher,
- * no AI call) and navigates to /search with the derived filters;
- * the original phrase rides along as `smart=` so the page can show
- * which rules matched.
+ * Parses the phrase with parseSmartQuery (deterministic heuristics —
+ * synonyms, typo correction, phrase → filters; no AI call) and
+ * navigates to /search with the derived filters; the original phrase
+ * rides along as `smart=` so the page can show which rules matched.
  */
 export function SmartSearchForm() {
   const t = useTranslations("category");
@@ -69,7 +69,7 @@ export function SmartSearchForm() {
       <label htmlFor="smart-search" className="text-sm font-bold text-ink-900">
         {t("smartSearch")}
       </label>
-      <p className="text-xs leading-5 text-neutral-500">{t("smartSearchHint")}</p>
+      <p className="text-xs leading-5 text-neutral-600">{t("smartSearchHint")}</p>
       <div className="flex gap-2">
         <input
           id="smart-search"

@@ -7,19 +7,21 @@ RBAC guards.
 
 This is a portfolio project built to the standard of a real product:
 server-side pricing (the client never decides the final total),
-a swappable payment port (Mock today, Zarinpal sandbox next),
-subscription billing on both sides (buyer box + vendor plan),
-and CI running typecheck, lint, Vitest and build on every push.
+a swappable payment port (Mock by default, real Zarinpal sandbox
+behind one env var), subscription billing on both sides (buyer box
++ vendor plan), and CI running typecheck, lint, Vitest, build and
+Playwright E2E on every push.
 
-> **Week 2 status:** full catalog — URL-synced faceted filter
-> (category, price, vendor, organic / gluten-free / local, rating,
-> in-stock, sort, search, pagination), category page with sidebar +
-> mobile drawer + active-filter chips, search page, smart-search
-> stub (keyword matcher, no AI call yet), complete product page
-> (gallery, quantity, reviews, related), and Playwright E2E on
-> Chromium + Firefox. No live database yet — the catalog runs on the
-> seed adapter; the real Prisma adapter is implemented and switches
-> on automatically once `DATABASE_URL` is set (see below).
+> **Final state (Week 8, 2026-11-28):** all 8 weeks complete.
+> 222 Vitest tests + Playwright E2E on Chromium and Firefox (see
+> "Week 8" below for the final count), axe a11y suite green,
+> SEO (sitemap / robots / JSON-LD / hreflang) in place, README +
+> demo script complete. Live at https://sabzineh-web.vercel.app
+> (project `sabzineh-web`) — but see "Production status": the live
+> site still runs on the seed adapter because migrations 0001–0005
+> never ran against Neon; category/product pages fail there until
+> `prisma migrate deploy` + seed runs (or `DATABASE_URL` is removed
+> from Vercel env so the app falls back to seed data).
 
 ## Stack
 
@@ -61,6 +63,23 @@ Until then the storefront renders from `apps/web/src/data/seed.json`
 (the same data the seed script inserts), so the app is fully
 demonstrable without a database.
 
+## Environment variables
+
+| Variable | Required | Value |
+|---|---|---|
+| `DATABASE_URL` | For the real DB | Neon pooled connection string (`…-pooler…?sslmode=require`). Unset = seed/memory adapters. |
+| `PAYMENT_PROVIDER` | No (default `mock`) | `mock` or `zarinpal` |
+| `ZARINPAL_MERCHANT_ID` | For Zarinpal | Sandbox test UUID (`00000000-0000-0000-0000-000000000000` works). Real id only in Vercel, never in git. |
+| `ZARINPAL_SANDBOX` | No (default `true`) | `true` = sandbox, `false` = live Zarinpal |
+| `NEXT_PUBLIC_APP_URL` | No (see note) | Production URL, e.g. `https://sabzineh-web.vercel.app`. Canonicals, Open Graph and the sitemap derive from it; the fallback is the live project URL. Set it in Vercel so local builds don't bake in the wrong host. |
+| `AI_API_KEY` / `AI_MODEL` | No | Unused: the Week 7 AI features are deterministic heuristics with no external API. Left in `.env.example` for a future real provider. |
+
+Secrets live only in Vercel env vars and local `apps/web/.env`
+— never in git, never in chat. (A real `DATABASE_URL` was once
+committed by mistake in an old commit and later deleted; it is
+still in git history — rotate the Neon password before putting
+any real data on that database.)
+
 ### Catalog data source: seed adapter vs Prisma adapter
 
 `src/features/catalog/repository.ts` defines one `CatalogRepository`
@@ -80,6 +99,48 @@ The migration for the Week 2 `Product.local` column
 (`0002_add_product_local`) was written by hand from the schema
 because no database was available to run `prisma migrate dev`
 against; verify it with `prisma migrate deploy` once Neon exists.
+
+### Auth, sessions and orders: Prisma vs memory adapter (Week 3)
+
+The same switch applies to auth and checkout, behind two more
+interfaces in `src/lib/auth/store.ts` (`UserStore`/`SessionStore`)
+and `src/server/store.ts` (`DataStore`):
+
+- `MemoryUserStore` / `MemorySessionStore` / `MemoryDataStore` —
+  in-memory, active while `DATABASE_URL` is unset. Demo users are
+  seeded from `seed.json` and the demo password is hashed with
+  bcrypt once per server process (`hashPassword(DEMO_PASSWORD)`,
+  never stored in code). The demo-customer wallet holds 150,000
+  Toman; discounts come from `seed.json`. Orders, payments and
+  wallet transactions live only in process memory and reset on
+  restart — the same seed-JSON fallback the catalog uses.
+- `PrismaUserStore` / `PrismaSessionStore` / `PrismaDataStore` —
+  real Postgres rows (migration `0003_auth_sessions`: `Session`
+  table + `Order.discountAmount/walletApplied/payable/addressId`).
+  Selected automatically by `getUserStore()` / `getSessionStore()` /
+  `getDataStore()` as soon as `DATABASE_URL` is set — no page or
+  action code changes. `getAuthDataSource()` /
+  `getOrderDataSource()` report which adapter is active.
+
+Sessions are opaque random tokens stored server-side with a 7-day
+expiry; the cookie (`sabzineh-session`, httpOnly, sameSite=lax,
+secure in production) carries only the token. `getSession()` in
+`src/lib/auth/guards.ts` resolves the token server-side and never
+trusts a client-supplied role. `src/proxy.ts` redirects guests
+away from `/account`, the vendor panel (`/vendor/dashboard`,
+`/vendor/products`, `/vendor/settings`) and `/admin` when the cookie is
+absent (fast path only — the page guards do the real check). The
+public shop page (`/vendor/<shop-slug>`) is open to guests.
+
+Checkout rules (all server-side, `src/server/orders/service.ts`):
+prices and stock are re-read at order time, the same
+Idempotency-Key returns the same order (no double charge, no
+double wallet debit, no double stock reservation), stock is
+reserved at creation and released on cancel/failed payment, and a
+cancelled order refunds the wallet debit with a
+`WalletTransaction` record. The cart itself is device-local
+(Zustand + persist) and survives login; the order page clears it
+once the order is seen as PAID.
 
 ### If `pnpm install` fails with EPERM chown on the lockfile
 
@@ -135,8 +196,10 @@ built CSS with `grep -o <utility> apps/web/.next/static/chunks/*.css`.
 | Vendor | vendor@sabzineh.ir | demo1234 |
 | Customer | customer@sabzineh.ir | demo1234 |
 
-See `docs/demo-accounts.md`. Real authentication lands in Week 3;
-the seeded password hashes are placeholders, not real credentials.
+See `docs/demo-accounts.md`. Week 3: bcrypt password hashes (demo
+password `demo1234` hashed at seed time), httpOnly cookie sessions,
+registration for customers. Demo only — never ship these accounts
+to production.
 
 ## Project structure
 
@@ -162,22 +225,192 @@ sabzineh/
 - [x] Prisma schema with all models + indexes; migration SQL generated
 - [x] Seed: 3-level category tree, 12 vendors, 120 products, 3 demo accounts
 - [x] Vitest + lint + typecheck green from the first commit; CI green
-- [ ] Deploy skeleton to Vercel at end of Week 1 (needs her Vercel project)
+- [x] Deploy skeleton to Vercel (project `sabzineh-web`, live at https://sabzineh-web.vercel.app — see `docs/vercel-deploy.md`)
 
 ## Week 2 done-criteria
 
 - [x] Catalog repository: Prisma `where`/`orderBy` builders + seed adapter behind one interface
 - [x] Faceted filter + sort + search + pagination, all URL-synced (copy-paste reproduces the list)
 - [x] Category page: sidebar, mobile drawer, active-filter chips, subcategories, skeleton
-- [x] Search page (`/search?q=`) + smart-search stub (`parseSmartQuery`, no AI call)
+- [x] Search page (`/search?q=`) + smart search (`parseSmartQuery`, deterministic heuristics — synonyms, typo correction, phrase → filters; no AI call, see Week 7)
 - [x] Product page: gallery, quantity, stock states, reviews, related products
 - [x] Vitest 67 tests; Playwright E2E on Chromium + Firefox (filter acceptance, search, product/cart)
 - [ ] Real Prisma queries against Neon (blocked on `DATABASE_URL`)
 
-## Roadmap
+## Week 3 done-criteria
+
+- [x] Real auth: bcrypt passwords, httpOnly cookie sessions (7-day, server-side records, logout invalidates), customer registration (Iranian mobile + password strength), one-click demo login for all 3 roles
+- [x] Roles + guards: proxy redirect for guests, `requireRole` per route group, vendors see only their own data (vendorId from session), cross-user order pages return not-found
+- [x] Cart: per-vendor groups, quantity controls capped at stock, persisted cart merged on login, server-side price/stock re-validation at checkout
+- [x] Checkout: address book (Iranian postal code + phone), server-side discount validation (usage cap, min amount, expiry, once per user), wallet full/partial + gateway, idempotent order creation, mock gateway page, cancel/failed path keeps the cart
+- [x] Vitest 104 tests; Playwright E2E on Chromium + Firefox (full purchase flow, cancelled payment, role guards, cross-user isolation)
+- [ ] Real Prisma queries against Neon (password rotation declined
+      by her — the leaked string in public git history stays valid,
+      demo data only; `prisma migrate deploy` for 0001/0002/0003
+      still to run once `DATABASE_URL` is set)
+
+## Week 4 done-criteria
+
+- [x] Real Zarinpal sandbox `PaymentPort`: request authority, StartPay redirect, callback, server-side verify (code 100/101 → PAID, error codes → FAILED, transport failures throw so the order stays PENDING and retryable); `ZARINPAL_BASE_URL` escape hatch; refund throws (no Zarinpal refund API — wallet credit is the refund path)
+- [x] 15 mocked-HTTP unit tests for the Zarinpal port (authority, Rial conversion, error codes, amount mismatch, non-JSON/HTTP errors, sandbox/live hosts, 42-char order id, HTTP 401/-51 unpaid authority)
+- [x] Gated sandbox E2E spec (`tests/e2e/zarinpal-sandbox.spec.ts`, skipped unless `E2E_ZARINPAL=1` with `PAYMENT_PROVIDER=zarinpal`): StartPay redirect with a real authority, callback NOK cancels, callback OK for an unpaid authority never marks PAID
+- [x] Sandbox authority leg verified live (real `S000…` authority from the test merchant id); gated sandbox E2E passes 6/6 (Chromium + Firefox); full browser click-through still needs a human on the deployed site
+- [x] Migrations validated offline against the schema (24 tables, 17 enums, 186 columns, 25 indexes — all match); `migration_lock.toml` added (required by `prisma migrate deploy`)
+- [x] Vercel deploy documented (`docs/vercel-deploy.md`): project `sabzineh-web`, live URL verified 200, env-var table, post-deploy checklist
+- [ ] `prisma migrate deploy` + seed against Neon (needs `DATABASE_URL`)
+- [ ] Sandbox click-through on the live site (human, with the test card)
+
+## Week 5 done-criteria
+
+- [x] Vendor dashboard: revenue / order count / product count, top-5 products, incoming order list with fulfilment buttons (PAID → PREPARING → SHIPPED → DELIVERED, one step at a time, server-side); a PENDING vendor sees an "under review" banner
+- [x] Multi-step product form (basics → images → attributes → review), per-step Zod validation on client and server; Uploader (drag-and-drop, max 4 × 1 MB, data: URLs in demo mode, `serverActions.bodySizeLimit: "5mb"`); draft vs published — drafts never appear in the public catalog (both adapters gate on `PUBLISHED`)
+- [x] Product management: search + status filter, edit (same form, prefilled), publish/unpublish/archive, quick stock +/− with the catalog guard
+- [x] Vendor profile/settings: shop name, city, bio, phone, logo URL, payout IBAN + account holder (stored only — migration `0004_vendor_profile_fields` — never rendered publicly); public shop page `/vendor/<slug>` for APPROVED vendors only
+- [x] Vendor registration (`/auth/vendor-register`): creates a VENDOR user + PENDING profile; the vendor can draft but cannot publish until admin approval (Week 6)
+- [x] Scoping: every vendor query is filtered by the session vendorId server-side; cross-vendor read/update/publish/restock/order-transition all fail (unit + E2E); the proxy now protects only the panel paths — the public shop page is open to guests
+- [x] Vitest 143 tests (24 new); Playwright E2E 9 new vendor tests on Chromium + Firefox (create → publish → catalog, draft 404, edit stock, cross-vendor isolation, registration, shop page, fulfilment)
+- [ ] `prisma migrate deploy` for 0004 against Neon (needs `DATABASE_URL`)
+
+### Vendor data: Prisma vs memory adapter (Week 5)
+
+`src/features/vendor/repository.ts` follows the Week 2 pattern:
+`MemoryVendorRepository` (seed products array + module-level image/
+attribute registries) vs `PrismaVendorRepository` (real `Product` /
+`ProductImage` / `VendorProfile` rows), switched by
+`getVendorRepository()` on `DATABASE_URL` only. Vendor-created
+products are appended to the same seed `products` array the catalog
+reads, so a PUBLISHED product shows up in the storefront in the same
+process; uploaded images ride as data: URLs (`src/data/product-
+images.ts`) and are served under the CSP `img-src 'self' data:`.
+Order status is a single status per order (Week 1 schema): when a
+vendor advances fulfilment the whole order flips — per-item
+fulfilment is a Week 6+ concern.
+
+## Week 6 done-criteria
+
+- [x] Admin dashboard (`/admin/dashboard`): real stats (users, vendors, orders, revenue), recent 5 orders, low-stock alerts (≤ 5)
+- [x] User management (`/admin/users`): server search + role filter, `DataTable` from `@sabzineh/ui`, detail page, suspend/activate; suspending kills all sessions and the login service blocks suspended users server-side (`loginWithCredentials` throws `suspended`); cannot suspend yourself or the last ACTIVE admin
+- [x] Vendor approval queue (`/admin/vendors`): approve → APPROVED (can publish) / reject with reason (vendor sees it on their dashboard); every action audit-logged (actor, action, target, timestamp); re-approve/re-reject of a decided request is rejected
+- [x] Category tree CRUD (`/admin/categories`): add/edit/rename/reorder/move with pure validation rules (`category-rules.ts`: max 3 levels, no cycles, no self-parent); delete blocked when the category has children or products (reassign products to another category first)
+- [x] Discount code CRUD (`/admin/discounts`): reuses the Week 3 server-side validation; delete blocked when the code was ever used by an order
+- [x] Two-sided subscriptions: (a) buyer weekly box (`/account/subscription`) — pick a plan, pay by wallet or Zarinpal sandbox, pause / skip a week / resume / cancel; a weekly box order is generated per active subscription with deterministic contents (hash-offset pick from in-stock products, priced from the plan) and an invoice; (b) vendor plan (`/vendor/subscription`) — basic 12% commission / 20 products, pro 8% / 200, enforced server-side (product cap on create, commission rate snapshotted on order items); no plan = basic terms
+- [x] Payouts: per-vendor payout computed from DELIVERED order items (gross − snapshotted commission = net), REQUESTED → APPROVED → PAID, one open payout per vendor + period; vendor requests on `/vendor/subscription`, admin approves/marks paid on `/admin/payouts`; payouts are records only — no real bank transfers
+- [x] Order oversight (`/admin/orders`): status/vendor filters, read-only detail with user + product titles; audit log page (`/admin/audit`)
+- [x] Migration `0005_admin_subscriptions` (PayoutStatus REQUESTED/APPROVED, `VendorProfile.rejectionReason`, `BoxDelivery.orderId`); schema validated offline, client regenerated
+- [x] Vitest 188 tests (45 new: approval transitions, suspend blocks login, category-tree rules, subscription lifecycle, payout arithmetic); Playwright E2E 5 new admin tests on Chromium + Firefox (approve → publish, reject with reason, suspend → login blocked, subscribe → pause → resume, sell → deliver → payout → paid)
+- [ ] `prisma migrate deploy` for 0005 against Neon (needs `DATABASE_URL`) — migrations 0001–0005 still never ran against Neon, which is why category/product pages fail on the live site (see below)
+
+### Admin / subscription / payout data: Prisma vs memory adapter (Week 6)
+
+`src/server/billing/store.ts` follows the same pattern:
+`MemoryBillingStore` (module-level maps, seeded with the demo
+customer's ACTIVE box subscription) vs `PrismaBillingStore` (real
+`Subscription` / `BoxDelivery` / `Invoice` / `Payout` / `AuditLog`
+rows), switched by `getBillingStore()` on `DATABASE_URL` only.
+Admin user/vendor/category/discount operations go through the same
+`DataStore` / catalog / vendor repositories as Weeks 2–5.
+**Cross-bundle fix (Week 6):** the seed arrays in `src/data/seed.ts`
+and the image registry in `src/data/product-images.ts` now live on
+`globalThis` — Next.js compiles route handlers into a separate bundle
+from RSC pages, so a module-level array was instantiated twice and a
+vendor-created product was invisible to `/api/catalog/products` (and
+the cart that reads it), even though its public page rendered. The
+data/billing stores already used this singleton pattern; the seed
+arrays were the only ones that didn't.
+
+## Week 7 done-criteria
+
+- [x] Smart search upgraded from the Week 2 stub: Persian synonym expansion (incl. English → Persian), typo-tolerant matching (Levenshtein ≤ 2, corrections shown to the user, never hidden), phrase → structured filters (price below/above/between, min rating, category + vendor by name) — `features/catalog/smart-search.ts`
+- [x] Personalised recommendations ("پیشنهاد برای شما", homepage + cart): deterministic scoring formula over order history + cart + views (`features/ai/recommendations.ts` — vendor affinity +6/order capped at 12, category affinity +4 capped at 8, same-vendor bundle +8, viewed +3), a "why this" line per card, best-seller fallback for guests; served by `GET /api/recommendations`
+- [x] Rule-based shopping assistant (floating panel on every page, `POST /api/assistant`): product search from real catalog data, subscription plans, order status for the caller's own orders only (server-side session scoping), payment/shipping/discount FAQs, honest handoff to human support when it cannot answer; no fake "typing" claims
+- [x] Vendor description/tag draft generator (button in the product form): fixed Persian/English templates + keyword extraction, editable before save, never auto-published (`features/ai/description.ts`)
+- [x] Realtime SSE (`GET /api/events`): session-required, per-user stream on an in-process bus (`server/events.ts`); every event is first persisted as a Notification row (Prisma adapter when `DATABASE_URL` is set, memory adapter otherwise — `server/store.ts`, no new migration: the `Notification` table exists since 0001). Events emitted on payment verified (`order-paid`), order status change, box generated, vendor approved/rejected, payout approved/paid
+- [x] Notifications center: header bell with unread count (SSE live + polling fallback with backoff), list page `/account/notifications` with mark-all-read; the bell and the page stay in sync via a `sabzineh:notifications-changed` event
+- [x] Honest AI note: all three "AI" features are deterministic server-side heuristics — no external AI API, no API key, no third-party script (see `docs/architecture.md`)
+- [x] Vitest 222 tests (34 new: smart search, recommendations, assistant routing, description drafts, event-bus scoping, notification store); Playwright E2E 10 new AI/realtime tests on Chromium + Firefox
+- [ ] `prisma migrate deploy` for 0001–0005 against Neon (needs `DATABASE_URL`) — still never ran, which is why category/product pages fail on the live site (see below)
+
+### Production status (2026-11-27, still open)
+
+Homepage `/fa` loads, but category/product pages fail with a Next.js
+server error on https://sabzineh-web.vercel.app. Diagnosis:
+`DATABASE_URL` is set in Vercel runtime, so the catalog repository
+uses the Prisma adapter, but the Neon database has no tables —
+migrations 0001–0005 were never run (`prisma migrate deploy` + seed
+against Neon, or temporarily remove `DATABASE_URL` from Vercel env so
+the app falls back to seed data). Do not try to fix production from
+this VM: there is no `DATABASE_URL` here and no Vercel API access to
+the team scope.
 
 Week 2 — full catalog: faceted filter, sort, search.
 Week 3 — auth + roles + cart + checkout.
 Week 4 — payments (Zarinpal sandbox), wallet, discounts; live MVP.
 Week 5 — vendor panel + uploader. Week 6 — admin panel + subscriptions.
 Week 7 — AI (3 features), SSE, notifications. Week 8 — polish, SEO, a11y, README.
+
+## Week 8 done-criteria (final)
+
+- [x] Definition of Done audit: `docs/done-checklist.md` — every item
+  from the plan (p.14) verified by running the check, not by reading
+  code; 10 of 12 verified, 2 honestly UNVERIFIED (Lighthouse score —
+  no Lighthouse-capable browser in the build VM; live-site console
+  errors — no Vercel access from here)
+- [x] SEO: `src/app/robots.ts` + `src/app/sitemap.ts` (368 URLs:
+  2 locales × home/search/50 categories/120 products/12 shops),
+  `metadataBase` + canonical + hreflang (fa/en/x-default) + Open
+  Graph in the locale layout and on category/product pages, JSON-LD
+  (`Organization` + `WebSite` home, `Product` + `BreadcrumbList`
+  product, `BreadcrumbList` category) via a single `JsonLd`
+  component — the only `dangerouslySetInnerHTML` in the app, static
+  server data only; `public/favicon.svg` added
+- [x] Accessibility: new axe suite `tests/e2e/a11y.spec.ts`
+  (`@axe-core/playwright`) over home, category, product, cart,
+  checkout, login, vendor + admin dashboards, plus a keyboard-only
+  checkout check — 9/9 green on Chromium and Firefox. The suite
+  found 20 real violations and they were fixed: `text-neutral-500`
+  on the cream background was 4.42:1 (below WCAG 2.2 AA 4.5:1) →
+  `text-neutral-600` (≈7:1, 73 uses); `aria-pressed` on filter
+  links is invalid on the `link` role → `aria-current` on the
+  active filter. Before: 20 violations / 3 pages; after: 0.
+- [x] Performance (local prod build, Chromium, median of 3): home
+  TTFB 41 ms / load 208 ms, category 114 ms / 225 ms, product
+  97 ms / 225 ms; document transfer ≈ 18–20 KB compressed;
+  `.next/static` 1.2 MB, largest JS chunk 224 KB. No external hosts
+  in built HTML (verified: only the site's own hreflang URLs) —
+  no Google Fonts, no CDN, no third-party scripts (CSP already
+  forbids them). LCP/Lighthouse not measurable in this VM (see
+  `docs/architecture.md` → Performance)
+- [x] Final sweep: typecheck + lint green, Vitest 222 tests green,
+  Playwright E2E 94 passed / 6 skipped (gated Zarinpal sandbox
+  spec) / 0 failed on Chromium + Firefox (47 per browser)
+- [x] Docs: README rewritten for the final state (env-var table,
+  Week 8 section, known limitations), `docs/architecture.md` +
+  `docs/demo-accounts.md` updated, `docs/demo-script.md` added
+  (10-minute interview walkthrough), `docs/done-checklist.md`
+  added
+- [x] Housekeeping: no TODOs, no `console.log`, no dead code found
+  (3 candidates checked — all in use), no new secrets in git
+  (only `.env.example` tracked, placeholders only); the old leaked
+  `DATABASE_URL` in history was NOT rewritten — rotate the Neon
+  password before any real data goes on that database
+
+## Known limitations (Week 8, honest list)
+
+- **Production DB**: migrations 0001–0005 never ran against Neon,
+  so the live site's category/product pages fail while the homepage
+  renders (see "Production status" below). Fix: `prisma migrate
+  deploy` + `db:seed` against Neon, or remove `DATABASE_URL`
+  from Vercel env to fall back to seed data.
+- **Zarinpal sandbox click-through**: the full browser payment on
+  the live site still needs a human with the sandbox test card
+  (Week 4 verified the authority leg + gated E2E; the sandbox
+  captcha fields are inert in cloud browsers).
+- **SSE on serverless**: each Vercel function instance has its own
+  event bus — SSE is a fast path, polling fallback covers drops.
+- **AI features are heuristics**: no external AI API by design
+  (see `docs/architecture.md`).
+- **Images**: product photos are deterministic SVG data-URI
+  placeholders; vendor uploads ride as data: URLs (max 4 × 1 MB).
+  No image CDN, no `next/image` optimisation pass — a real photo
+  pipeline is future work.
+- **Lighthouse**: no score claimed from this VM (see above).

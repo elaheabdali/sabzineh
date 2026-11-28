@@ -15,6 +15,8 @@ export interface CreatePaymentInput {
   amount: number;
   description: string;
   callbackUrl: string;
+  /** Locale for locale-prefixed payment pages (mock gateway). */
+  locale?: string;
 }
 
 export interface CreatePaymentResult {
@@ -34,6 +36,11 @@ export interface PaymentPort {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   verify(authority: string, amount: number): Promise<VerifyResult>;
   refund(refId: string, amount: number): Promise<{ ok: boolean }>;
+  /**
+   * Rebuilds the customer-facing payment URL for an existing
+   * authority (resume an interrupted checkout). No gateway call.
+   */
+  paymentUrlFor(authority: string, locale?: string): string;
 }
 
 export class PaymentConfigurationError extends Error {

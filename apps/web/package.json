@@ -16,11 +16,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sabzineh/types": "workspace:*",
-    "@sabzineh/ui": "workspace:*",
     "@fontsource-variable/vazirmatn": "^5.3.0",
     "@prisma/client": "^6.18.0",
+    "@sabzineh/types": "workspace:*",
+    "@sabzineh/ui": "workspace:*",
     "@tanstack/react-query": "^5.108.4",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^0.556.0",
     "next": "16.4.6",
     "next-intl": "^4.16.1",
@@ -31,11 +32,13 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
-    "@sabzineh/config": "workspace:*",
+    "@axe-core/playwright": "^4.14.1",
     "@playwright/test": "1.65.1",
+    "@sabzineh/config": "workspace:*",
     "@tailwindcss/turbopack": "4.3.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

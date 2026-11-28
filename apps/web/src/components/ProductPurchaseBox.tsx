@@ -34,7 +34,7 @@ export function ProductPurchaseBox({ productId, stock, locale }: ProductPurchase
           {t("onlyLeft", { count: stock })}
         </p>
       ) : (
-        <p className="text-sm text-neutral-500" data-testid="stock-state">
+        <p className="text-sm text-neutral-600" data-testid="stock-state">
           {t("inStock")} — {t("stock")}: {stock.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
         </p>
       )}

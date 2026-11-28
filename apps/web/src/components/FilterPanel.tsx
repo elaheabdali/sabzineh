@@ -54,7 +54,7 @@ export function FilterPanel({ basePath, params, facets, vendors, locale }: Filte
         <Link
           href={hrefFor({ [key]: active ? undefined : true })}
           data-testid={`filter-${key}`}
-          aria-pressed={active}
+          aria-current={active ? true : undefined}
           className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-sm text-ink-900 hover:bg-cream-100"
         >
           <span className="flex items-center gap-2">
@@ -70,7 +70,7 @@ export function FilterPanel({ basePath, params, facets, vendors, locale }: Filte
             </span>
             {label}
           </span>
-          <span className="text-xs text-neutral-500">{count.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}</span>
+          <span className="text-xs text-neutral-600">{count.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}</span>
         </Link>
       </li>
     );
@@ -100,7 +100,7 @@ export function FilterPanel({ basePath, params, facets, vendors, locale }: Filte
                 <Link
                   href={hrefFor({ vendor: active ? undefined : vendor.id })}
                   data-testid="vendor-filter"
-                  aria-pressed={active}
+                  aria-current={active ? true : undefined}
                   className={
                     active
                       ? "flex w-full items-center justify-between rounded-lg bg-leaf-100 px-2 py-1.5 text-sm font-medium text-leaf-700"
@@ -108,7 +108,7 @@ export function FilterPanel({ basePath, params, facets, vendors, locale }: Filte
                   }
                 >
                   <span>{vendor.shopName}</span>
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-xs text-neutral-600">
                     {count.toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
                   </span>
                 </Link>
@@ -122,7 +122,7 @@ export function FilterPanel({ basePath, params, facets, vendors, locale }: Filte
         <h3 id="filter-price" className="text-sm font-bold text-ink-900">
           {t("priceRange")}
         </h3>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-600">
           {formatPrice(facets.price.min, locale)} — {formatPrice(facets.price.max, locale)}
         </p>
         {/* key remounts the inputs when the URL changes from elsewhere
@@ -162,7 +162,7 @@ export function FilterPanel({ basePath, params, facets, vendors, locale }: Filte
                 <Link
                   href={hrefFor({ minRating: option.value })}
                   data-testid="rating-filter"
-                  aria-pressed={active}
+                  aria-current={active ? true : undefined}
                   className={
                     active
                       ? "block rounded-lg bg-leaf-100 px-2 py-1.5 text-sm font-medium text-leaf-700"

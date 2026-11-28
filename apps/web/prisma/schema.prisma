@@ -92,7 +92,12 @@ enum InvoiceStatus {
 }
 
 enum PayoutStatus {
+  /** Computed by the platform, not yet claimed by the vendor. */
   PENDING
+  /** Vendor requested the payout; awaiting admin approval. */
+  REQUESTED
+  /** Approved by an admin; awaiting the actual transfer. */
+  APPROVED
   PAID
 }
 
@@ -133,6 +138,20 @@ model User {
   tickets       Ticket[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  sessions      Session[]
+}
+
+/** Server-side session (Week 3). Opaque random token, stored hashed? No —
+ *  the token itself is the secret: it is only ever sent in an httpOnly
+ *  cookie, never logged, and looked up by exact match. */
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 model VendorProfile {
@@ -144,7 +163,15 @@ model VendorProfile {
   city      String
   bio       String?
   status    VendorStatus @default(PENDING)
+  /** Reason shown to the vendor when an admin rejects the request. */
+  rejectionReason String?
   rating    Float        @default(0)
+  // Week 5: profile settings. Payout fields are stored only — the
+  // public shop page never renders them.
+  phone              String?
+  logoUrl            String?
+  payoutIban         String?
+  payoutAccountHolder String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -216,12 +243,22 @@ model Order {
   total          Int
   discountId     String?
   discount       Discount?   @relation(fields: [discountId], references: [id])
+  /** Snapshot of the discount value applied (Toman). */
+  discountAmount Int         @default(0)
+  /** Wallet amount applied at order time (Toman). */
+  walletApplied  Int         @default(0)
+  /** Amount still owed via the gateway after discount + wallet. */
+  payable        Int         @default(0)
+  addressId      String?
+  address        Address?    @relation(fields: [addressId], references: [id])
   idempotencyKey String      @unique
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
   items    OrderItem[]
   payments Payment[]
+  /** Weekly box deliveries fulfilled by this order (Week 6). */
+  boxDeliveries BoxDelivery[] @relation("BoxDeliveryOrder")
 
   @@index([userId, createdAt])
 }
@@ -327,6 +364,9 @@ model BoxDelivery {
   subscription   Subscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   weekStart      DateTime
   status         BoxDeliveryStatus @default(SCHEDULED)
+  /** Weekly box order generated for this delivery (Week 6). */
+  orderId        String?
+  order          Order?            @relation("BoxDeliveryOrder", fields: [orderId], references: [id], onDelete: SetNull)
   createdAt      DateTime          @default(now())
 
   @@index([subscriptionId, weekStart])
@@ -368,6 +408,8 @@ model Address {
   postalCode String
   phone      String
   createdAt  DateTime @default(now())
+
+  orders Order[]
 }
 
 model Review {

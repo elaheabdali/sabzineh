@@ -6,18 +6,21 @@ import { placeholderImage } from "@/data/seed";
 
 /**
  * Product gallery: one large image + thumbnails.
- * Images are deterministic SVG placeholders (no CDN) until the real
- * uploader lands in Week 5; the gallery interaction is already real.
+ * Uploaded images (Week 5) are shown when present; otherwise the
+ * deterministic SVG placeholders (no CDN) from before.
  */
-export function ProductGallery({ title }: { title: string }) {
+export function ProductGallery({ title, images }: { title: string; images?: string[] }) {
   const t = useTranslations("product");
   const [selected, setSelected] = useState(0);
-  const images = [0, 1, 2].map((variant) => placeholderImage(title, variant));
+  const galleryImages =
+    images && images.length > 0
+      ? images
+      : [0, 1, 2].map((variant) => placeholderImage(title, variant));
   return (
     <div className="flex flex-col gap-3" role="group" aria-label={t("gallery")}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={images[selected]}
+        src={galleryImages[selected]}
         alt={title}
         width={800}
         height={800}
@@ -25,7 +28,7 @@ export function ProductGallery({ title }: { title: string }) {
         className="aspect-square w-full rounded-3xl border border-cream-200 object-cover"
       />
       <div className="flex gap-2" role="tablist" aria-label={t("gallery")}>
-        {images.map((src, index) => (
+        {galleryImages.map((src, index) => (
           <button
             key={index}
             type="button"

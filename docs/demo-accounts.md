@@ -1,8 +1,8 @@
 # Demo accounts
 
 Seeded by `apps/web/prisma/seed.ts` (password `demo1234` for all three
-— demo only; the stored hash is a placeholder until real auth lands
-in Week 3).
+— demo only; stored as a real bcrypt hash since Week 3, and hashed
+in-memory in seed mode).
 
 | Role | Email | Shop / note |
 |---|---|---|
@@ -23,3 +23,17 @@ in Week 3).
 
 Without a database the storefront renders the same data from
 `apps/web/src/data/seed.json`.
+
+## Vendor registration (Week 5)
+
+Anyone can request a vendor account at `/auth/vendor-register`
+(name, email, Iranian mobile, password, shop name, city). The request
+creates a VENDOR user and a PENDING vendor profile: the new vendor
+can log in and save product drafts, but cannot publish until an admin
+approves (`/admin/vendors` — approve/reject with reason, audit-logged).
+The vendor dashboard shows the request as "under review".
+
+Vendor panel (`/vendor/dashboard`, `/vendor/products`,
+`/vendor/products/new`, `/vendor/settings`) is scoped to the signed-in
+vendor's own data; the public shop page is `/vendor/<shop-slug>`
+(e.g. `/vendor/bagh-sabz-karaj`).

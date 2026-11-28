@@ -103,7 +103,7 @@ export function Uploader({
       >
         <ImagePlus className="size-8 text-leaf-700" aria-hidden="true" />
         <p className="text-sm font-medium text-ink-900">{label}</p>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-neutral-600">
           Drag and drop, or click to browse — up to {maxFiles} images, {maxSizeMB} MB each (JPG, PNG, WebP).
         </p>
         <input ref={inputRef} type="file" accept={accept} multiple hidden onChange={onInput} />
@@ -131,7 +131,7 @@ export function Uploader({
                   <div className="h-full bg-leaf-700" style={{ width: `${item.progress}%` }} />
                 </div>
               ) : null}
-              <p className="truncate px-2 py-1 text-xs text-neutral-500">{item.file.name}</p>
+              <p className="truncate px-2 py-1 text-xs text-neutral-600">{item.file.name}</p>
               <button
                 type="button"
                 aria-label={`Remove ${item.file.name}`}

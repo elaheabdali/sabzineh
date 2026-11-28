@@ -35,6 +35,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Vendor product images arrive as data: URLs (max 4 × 1 MB) — the
+  // default 1 MB server-action body limit is too small (Week 5).
+  experimental: {
+    serverActions: { bodySizeLimit: "5mb" },
+  },
   // Workspace packages ship TypeScript source; Next transpiles them.
   transpilePackages: ["@sabzineh/ui", "@sabzineh/types"],
   turbopack: {
